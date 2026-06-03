@@ -1,3 +1,6 @@
+packages:
+  - .
+
 allowBuilds:
   '@metagptx/vite-plugin-source-locator': true
   '@swc/core': true
