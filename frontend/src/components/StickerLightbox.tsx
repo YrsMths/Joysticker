@@ -21,7 +21,8 @@ type Props = {
   onClose: () => void;
 };
 
-const STAR_DYNAMIC_FRAMES = Array.from({ length: 33 }, (_, i) => `/assets/images/stickers/fantasy/sticker-star-dynamic/${i + 1}.png`);
+const withBase = (path: string) => `${import.meta.env.BASE_URL}${path.replace(/^\//, '')}`;
+const STAR_DYNAMIC_FRAMES = Array.from({ length: 33 }, (_, i) => withBase(`assets/images/stickers/fantasy/sticker-star-dynamic/${i + 1}.png`));
 
 export default function StickerLightbox({ src, alt, material, finish, stickerId, onClose }: Props) {
   useEffect(() => {

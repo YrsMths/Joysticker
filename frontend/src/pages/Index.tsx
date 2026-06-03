@@ -54,7 +54,8 @@ type AdjacentVariantUpgradeRule = VariantRuleBase & {
   };
 };
 type VariantUpgradeRule = CombinationVariantUpgradeRule | AdjacentVariantUpgradeRule;
-const STAR_DYNAMIC_FRAMES = Array.from({length:33},(_,i)=>`/assets/images/stickers/fantasy/sticker-star-dynamic/${i+1}.png`);
+const withBase = (path:string)=>`${import.meta.env.BASE_URL}${path.replace(/^\//,'')}`;
+const STAR_DYNAMIC_FRAMES = Array.from({length:33},(_,i)=>withBase(`assets/images/stickers/fantasy/sticker-star-dynamic/${i+1}.png`));
 const SHAPES: Record<string, Shape> = {
   '1x1':       [[0,0]],
   '2x1H':      [[0,0],[0,1]],
@@ -81,26 +82,26 @@ const SHAPE_LABEL: Record<string,string> = {
 // ===== 贴纸样例（覆盖全部 15 种拓扑） =====
 type StickerDef = { id:string; name:string; type:string; shapeKey:string; asset:string; note:string };
 const S: StickerDef[] = [
-  { id:'strawberry', name:'草莓',         type:'食物', shapeKey:'1x1',  asset:'/assets/images/stickers/foods/sticker-strawberry-v2.png', note:'食物订单核心' },
-  { id:'star',       name:'星星',         type:'梦幻', shapeKey:'1x1',  asset:'/assets/images/stickers/fantasy/sticker-star-v2.png',       note:'荧光与镭射联动' },
-  { id:'plant',      name:'盆栽',         type:'植物', shapeKey:'1x1',  asset:'/assets/images/stickers/plants/sticker-plant-v2.png',      note:'稳定补位' },
-  { id:'cherry',     name:'樱桃双子',     type:'食物', shapeKey:'2x1H', asset:'/assets/images/stickers/foods/sticker-cherry-v2.png',     note:'2×1 横向' },
-  { id:'cat',        name:'小猫',         type:'动物', shapeKey:'1x2V', asset:'/assets/images/stickers/animals/sticker-cat-v2.png',        note:'1×2 纵向' },
-  { id:'cake',       name:'蛋糕卷',       type:'食物', shapeKey:'3x1H', asset:'/assets/images/stickers/foods/sticker-cake-v2.png',       note:'3×1 长条' },
-  { id:'balloon',    name:'波点气球',     type:'装饰', shapeKey:'1x3V', asset:'/assets/images/stickers/decorations/sticker-balloon-v2.png',    note:'1×3 立式' },
-  { id:'cream',      name:'奶油挤花袋',   type:'食物', shapeKey:'L22',  asset:'/assets/images/stickers/foods/sticker-cream-v3-l22.png',     note:'L 型角落' },
-  { id:'flower',     name:'小花',         type:'植物', shapeKey:'rL22', asset:'/assets/images/stickers/plants/sticker-flower-v3-rl22.png',   note:'反 L 型' },
-  { id:'ticket',     name:'彩虹票根',     type:'节日', shapeKey:'T32',  asset:'/assets/images/stickers/festival/sticker-ticket-v3-t32.png',   note:'T 型节日' },
-  { id:'music',      name:'音符串',       type:'梦幻', shapeKey:'rT32', asset:'/assets/images/stickers/fantasy/sticker-music-v3-rt32.png',    note:'反 T 音乐' },
-  { id:'gift',       name:'礼物盒',       type:'节日', shapeKey:'2x2',  asset:'/assets/images/stickers/festival/sticker-gift-v2.png',         note:'2×2 满占' },
-  { id:'shell',      name:'贝壳',         type:'梦幻', shapeKey:'Z3',   asset:'/assets/images/stickers/fantasy/sticker-shell-v3-z3.png',     note:'3 格折线' },
-  { id:'carousel',   name:'旋转木马票',   type:'装饰', shapeKey:'I4',   asset:'/assets/images/stickers/decorations/sticker-carousel-ticket-v6-stitched.png',     note:'4 格长票根' },
-  { id:'gummy',      name:'小熊软糖',     type:'食物', shapeKey:'S4',   asset:'/assets/images/stickers/foods/sticker-gummy-v3-s4.png',     note:'4 格台阶' },
-  { id:'seagull',    name:'海鸥',         type:'动物', shapeKey:'C4',   asset:'/assets/images/stickers/animals/sticker-seagull-v3-c4.png',   note:'4 格弯月' },
-  { id:'daisy',      name:'小雏菊环',     type:'植物', shapeKey:'F5',   asset:'/assets/images/stickers/plants/sticker-daisy-v3-f5.png',     note:'5 格花瓣' },
-  { id:'envelope',   name:'花边信封',     type:'装饰', shapeKey:'2x1H', asset:'/assets/images/stickers/decorations/sticker-envelope-v2.png',   note:'生活补位' },
-  { id:'cat_mom',    name:'猫妈妈',       type:'动物', shapeKey:'2x2',  asset:'/assets/images/stickers/animals/sticker-cat-mom.png',       note:'两张小猫拼成 2×2 时升级揭示的变体贴纸' },
-  { id:'starry_star',name:'星星眼星星',   type:'梦幻', shapeKey:'1x1',  asset:'/assets/images/stickers/fantasy/sticker-star-dynamic/1.png', note:'星星相邻时觉醒的动态变体贴纸' },
+  { id:'strawberry', name:'草莓',         type:'食物', shapeKey:'1x1',  asset:withBase('assets/images/stickers/foods/sticker-strawberry-v2.png'), note:'食物订单核心' },
+  { id:'star',       name:'星星',         type:'梦幻', shapeKey:'1x1',  asset:withBase('assets/images/stickers/fantasy/sticker-star-v2.png'),       note:'荧光与镭射联动' },
+  { id:'plant',      name:'盆栽',         type:'植物', shapeKey:'1x1',  asset:withBase('assets/images/stickers/plants/sticker-plant-v2.png'),      note:'稳定补位' },
+  { id:'cherry',     name:'樱桃双子',     type:'食物', shapeKey:'2x1H', asset:withBase('assets/images/stickers/foods/sticker-cherry-v2.png'),     note:'2×1 横向' },
+  { id:'cat',        name:'小猫',         type:'动物', shapeKey:'1x2V', asset:withBase('assets/images/stickers/animals/sticker-cat-v2.png'),        note:'1×2 纵向' },
+  { id:'cake',       name:'蛋糕卷',       type:'食物', shapeKey:'3x1H', asset:withBase('assets/images/stickers/foods/sticker-cake-v2.png'),       note:'3×1 长条' },
+  { id:'balloon',    name:'波点气球',     type:'装饰', shapeKey:'1x3V', asset:withBase('assets/images/stickers/decorations/sticker-balloon-v2.png'),    note:'1×3 立式' },
+  { id:'cream',      name:'奶油挤花袋',   type:'食物', shapeKey:'L22',  asset:withBase('assets/images/stickers/foods/sticker-cream-v3-l22.png'),     note:'L 型角落' },
+  { id:'flower',     name:'小花',         type:'植物', shapeKey:'rL22', asset:withBase('assets/images/stickers/plants/sticker-flower-v3-rl22.png'),   note:'反 L 型' },
+  { id:'ticket',     name:'彩虹票根',     type:'节日', shapeKey:'T32',  asset:withBase('assets/images/stickers/festival/sticker-ticket-v3-t32.png'),   note:'T 型节日' },
+  { id:'music',      name:'音符串',       type:'梦幻', shapeKey:'rT32', asset:withBase('assets/images/stickers/fantasy/sticker-music-v3-rt32.png'),    note:'反 T 音乐' },
+  { id:'gift',       name:'礼物盒',       type:'节日', shapeKey:'2x2',  asset:withBase('assets/images/stickers/festival/sticker-gift-v2.png'),         note:'2×2 满占' },
+  { id:'shell',      name:'贝壳',         type:'梦幻', shapeKey:'Z3',   asset:withBase('assets/images/stickers/fantasy/sticker-shell-v3-z3.png'),     note:'3 格折线' },
+  { id:'carousel',   name:'旋转木马票',   type:'装饰', shapeKey:'I4',   asset:withBase('assets/images/stickers/decorations/sticker-carousel-ticket-v6-stitched.png'),     note:'4 格长票根' },
+  { id:'gummy',      name:'小熊软糖',     type:'食物', shapeKey:'S4',   asset:withBase('assets/images/stickers/foods/sticker-gummy-v3-s4.png'),     note:'4 格台阶' },
+  { id:'seagull',    name:'海鸥',         type:'动物', shapeKey:'C4',   asset:withBase('assets/images/stickers/animals/sticker-seagull-v3-c4.png'),   note:'4 格弯月' },
+  { id:'daisy',      name:'小雏菊环',     type:'植物', shapeKey:'F5',   asset:withBase('assets/images/stickers/plants/sticker-daisy-v3-f5.png'),     note:'5 格花瓣' },
+  { id:'envelope',   name:'花边信封',     type:'装饰', shapeKey:'2x1H', asset:withBase('assets/images/stickers/decorations/sticker-envelope-v2.png'),   note:'生活补位' },
+  { id:'cat_mom',    name:'猫妈妈',       type:'动物', shapeKey:'2x2',  asset:withBase('assets/images/stickers/animals/sticker-cat-mom.png'),       note:'两张小猫拼成 2×2 时升级揭示的变体贴纸' },
+  { id:'starry_star',name:'星星眼星星',   type:'梦幻', shapeKey:'1x1',  asset:withBase('assets/images/stickers/fantasy/sticker-star-dynamic/1.png'), note:'星星相邻时觉醒的动态变体贴纸' },
 ];
 
 const VARIANT_UPGRADE_RULES: VariantUpgradeRule[] = [
