@@ -7,6 +7,7 @@ import AuthError from '@/pages/AuthError';
 import GamePage from '@/game/pages/GamePage';
 
 const queryClient = new QueryClient();
+const routerBasename = import.meta.env.BASE_URL === '/' ? undefined : import.meta.env.BASE_URL;
 
 const AppRoutes = () => (
   <Routes>
@@ -20,7 +21,7 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <Toaster />
-      <BrowserRouter>
+      <BrowserRouter basename={routerBasename}>
         <AppRoutes />
       </BrowserRouter>
     </TooltipProvider>
