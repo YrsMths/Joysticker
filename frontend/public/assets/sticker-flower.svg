@@ -1,0 +1,22 @@
+<svg width="160" height="160" viewBox="0 0 160 160" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+    <feDropShadow dx="0" dy="8" stdDeviation="6" flood-color="#5CBF9D" flood-opacity=".2"/>
+  </filter>
+  <g filter="url(#shadow)" stroke="#fff" stroke-width="16" stroke-linejoin="round">
+    <path d="M78 140c10-39 8-72 0-94"/>
+    <path d="M80 94c-25-12-43-8-55 11 22 14 43 10 55-11Z"/>
+    <path d="M82 101c21-18 42-18 56-2-19 18-40 19-56 2Z"/>
+    <path d="M80 25c12 17 9 36 0 45-9-9-12-28 0-45Z"/>
+  </g>
+  <path d="M78 140c10-39 8-72 0-94" stroke="#62CFA9" stroke-width="10" stroke-linecap="round"/>
+  <path d="M80 94c-25-12-43-8-55 11 22 14 43 10 55-11Z" fill="#9EE6C9"/>
+  <path d="M82 101c21-18 42-18 56-2-19 18-40 19-56 2Z" fill="#A7D8FF"/>
+  <g>
+    <circle cx="80" cy="70" r="16" fill="#FFE27A"/>
+    <ellipse cx="80" cy="46" rx="15" ry="22" fill="#FFB7C5"/>
+    <ellipse cx="104" cy="70" rx="22" ry="15" fill="#FFB7C5"/>
+    <ellipse cx="80" cy="94" rx="15" ry="22" fill="#C9B6FF"/>
+    <ellipse cx="56" cy="70" rx="22" ry="15" fill="#C9B6FF"/>
+    <circle cx="80" cy="70" r="13" fill="#F7C948"/>
+  </g>
+</svg>

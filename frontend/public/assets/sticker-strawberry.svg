@@ -1,0 +1,13 @@
+<svg width="160" height="160" viewBox="0 0 160 160" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+    <feDropShadow dx="0" dy="8" stdDeviation="6" flood-color="#B76E79" flood-opacity=".22"/>
+  </filter>
+  <path filter="url(#shadow)" d="M79 144c35-20 52-56 41-83-7-17-24-27-41-16-17-11-34-1-41 16-11 27 6 63 41 83Z" fill="#fff" stroke="#fff" stroke-width="18" stroke-linejoin="round"/>
+  <path d="M79 144c35-20 52-56 41-83-7-17-24-27-41-16-17-11-34-1-41 16-11 27 6 63 41 83Z" fill="#FF7E93"/>
+  <path d="M80 42c-3-18 14-27 28-25-3 18-15 29-28 25Z" fill="#77D39B"/>
+  <path d="M77 43c-13-2-23-13-26-28 14-1 30 8 26 28Z" fill="#9EE6C9"/>
+  <g fill="#FFE9A6">
+    <circle cx="62" cy="72" r="4"/><circle cx="91" cy="73" r="4"/><circle cx="76" cy="94" r="4"/><circle cx="101" cy="104" r="4"/><circle cx="57" cy="111" r="4"/>
+  </g>
+  <path d="M55 52c13-12 32-11 48 0" stroke="#FFB7C5" stroke-width="6" stroke-linecap="round"/>
+</svg>
