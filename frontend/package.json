@@ -1,5 +1,5 @@
 {
-  "name": "shadcnui",
+  "name": "joysticker",
   "type": "module",
   "scripts": {
     "dev": "vite",
