@@ -4,6 +4,7 @@
 type Terrain = 'normal'|'masked'|'crate'|'stain'|'fog'|'reward';
 
 import { ALL_STICKER_IDS, HIDDEN_CODEX_STICKER_IDS } from './collection';
+import type { StickerFinishKey, StickerMaterialKey } from '@/game/data/stickerVariants';
 
 // 与 Index.tsx 中关卡 lv() 的字段对齐
 export interface PartyLevel {
@@ -16,10 +17,11 @@ export interface PartyLevel {
   star: number;
   pool: string[];
   orders: [string, string, number][]; // [kind,label,target]
+  targetScore: number;
   terrain: Record<string, string[]>;  // {fog:[...], reward:[...]}
   bases: Record<number, string[]>;    // {2:[...], 3:[...]}
-  mats: Record<string, number>;
-  fins: Record<string, number>;
+  mats: Partial<Record<StickerMaterialKey, number>>;
+  fins: Partial<Record<StickerFinishKey, number>>;
   tools: Record<string, number>;
   layer: number;
   rng: number;
@@ -100,26 +102,16 @@ export function generatePartyLevel(layer: number): PartyLevel {
   const room = ROOM_NAMES[(layer - 1) % ROOM_NAMES.length];
   const ch = ((layer - 1) % 2) + 1;
 
-  // 难度曲线：层数越高，订单越严，目标分数越大
+  // 难度曲线：层数越高，目标分数越大
   const star = 8 + Math.floor(layer * 4 + rng() * 6);
+  const targetScore = 22 + Math.floor(layer * 14 + rng() * 8);
 
   // 候选贴纸池：5-7 张随机贴纸
   const poolSize = 5 + Math.floor(rng() * 3);
   const shuffled = [...PARTY_POOL_STICKERS].sort(()=>rng()-0.5);
   const pool = shuffled.slice(0, poolSize);
 
-  // 订单：1-3 条，层数越高越多
-  const orderCount = layer < 3 ? 1 : layer < 6 ? 2 : 3;
   const orders: [string,string,number][] = [];
-  const used = new Set<string>();
-  for(let i=0;i<orderCount;i++){
-    let tpl = pickWeighted(ORDER_TEMPLATES, rng);
-    let tries = 0;
-    while(used.has(tpl.kind) && tries++ < 8){ tpl = pickWeighted(ORDER_TEMPLATES, rng); }
-    used.add(tpl.kind);
-    const target = tpl.min + Math.floor(layer * 0.4 + rng() * 2);
-    orders.push([tpl.kind, tpl.label(target), target]);
-  }
 
   // 地形：层数 ≥ 2 引入特殊格
   const exclude = new Set<string>();
@@ -165,10 +157,11 @@ export function generatePartyLevel(layer: number): PartyLevel {
     name: room[0],
     sub: `第 ${layer} 层 · 轻肉鸽`,
     art: room[1],
-    goal: orders.map(o=>o[1]).join('；'),
+    goal: `目标总分达到 ${targetScore}`,
     star,
     pool,
     orders,
+    targetScore,
     terrain,
     bases,
     mats,

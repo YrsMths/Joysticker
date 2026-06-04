@@ -1,11 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { BookOpen, Box, Eraser, Gift, Layers, Lock, PackageOpen, PartyPopper, PenLine, RefreshCw, RotateCw, Sparkles, Star, Trash2, Trophy, Type, X } from 'lucide-react';
+import { BookOpen, Box, Eraser, Gift, Layers, Lock, PackageOpen, PartyPopper, PenLine, RefreshCw, RotateCw, ShoppingBag, Sparkles, Star, Trash2, Trophy, Type, X } from 'lucide-react';
 import {
   CODEX_MATERIALS, CODEX_FINISHES, ALL_STICKER_IDS,
   encodeUnlockKey, isUnlocked, countStickerUnlocks, rollDrop,
   loadUnlocks, saveUnlocks, isStickerCodexRevealed, unlockStickerFamily,
   type MaterialKey as CMaterial, type FinishKey as CFinish,
 } from '@/lib/collection';
+import type { StickerFinishKey, StickerMaterialKey } from '@/game/data/stickerVariants';
+import { FINISHES, MATERIALS } from '@/game/data/stickerVariantMeta';
+import { getStickerVariantDecoClasses } from '@/game/data/stickerVariantVisuals';
 import { generatePartyLevel, reseedPartySession, type PartyLevel } from '@/game/systems/levelGen';
 import { STORY_COVERS } from '@/game/data/storyCovers';
 import MyDiaryBook, { loadDiaryBook, appendDiaryEntry, type DiaryEntry, type DiaryItemSnapshot } from '@/game/components/MyDiaryBook';
@@ -14,7 +17,7 @@ import StickerLightbox from '@/game/components/StickerLightbox';
 import AccountBadge from '@/game/components/AccountBadge';
 import { initAccounts, getItem as acctGetItem, setItem as acctSetItem, type Account } from '@/game/state/account';
 
-type Mode='home'|'storyMenu'|'story'|'party'|'diary';
+type Mode='home'|'storyMenu'|'story'|'party'|'diary'|'shop';
 type Terrain='normal'|'masked'|'crate'|'stain'|'fog'|'reward';
 const ROWS=8,COLS=6,KEY='happy-sticker-book-v7';
 
@@ -56,6 +59,20 @@ type AdjacentVariantUpgradeRule = VariantRuleBase & {
 type VariantUpgradeRule = CombinationVariantUpgradeRule | AdjacentVariantUpgradeRule;
 const withBase = (path:string)=>`${import.meta.env.BASE_URL}${path.replace(/^\//,'')}`;
 const STAR_DYNAMIC_FRAMES = Array.from({length:33},(_,i)=>withBase(`assets/images/stickers/fantasy/sticker-star-dynamic/${i+1}.png`));
+type CoinBurst = { id:string; source:'score'|'party-choice'; amount:number; label:string };
+type PartyChoiceOption = { id:string; title:string; detail:string; coinReward:number };
+type BoardScorePopup = {
+  id:string;
+  row:number;
+  col:number;
+  value:number;
+  kind:'base'|'pattern'|'special';
+  label?:string;
+  stackIndex:number;
+  dx:number;
+  dy:number;
+  delay:number;
+};
 const SHAPES: Record<string, Shape> = {
   '1x1':       [[0,0]],
   '2x1H':      [[0,0],[0,1]],
@@ -136,27 +153,8 @@ const VARIANT_UPGRADE_RULES: VariantUpgradeRule[] = [
   },
 ];
 
-// ===== 7 种材质 =====
-type MaterialKey = '普通'|'镭射'|'布料'|'磨砂'|'水晶贴'|'泡泡贴'|'烫金';
-const MATERIALS: Record<MaterialKey,{label:string;desc:string;cap:number;visual:string}> = {
-  '普通':   { label:'普通',   desc:'干净纸面，无能力',                       cap:0, visual:'mat-normal' },
-  '镭射':   { label:'镭射',   desc:'追光：本回合若 C ≥ 1，对最后一次构型再结算 1 次（min 2C，上限 8）', cap:8, visual:'mat-holo' },
-  '布料':   { label:'布料',   desc:'缝补：每贴 +1 蓄积，满 3 层兑现 +5（上限 5）', cap:5, visual:'mat-fabric' },
-  '磨砂':   { label:'磨砂',   desc:'消噪：稳态命中 ×2，邻位污渍 +1（上限 7）', cap:7, visual:'mat-frosted' },
-  '水晶贴': { label:'水晶贴', desc:'聚光：B ≥ 3 触发；奖励格再 +1（上限 9）', cap:9, visual:'mat-crystal' },
-  '泡泡贴': { label:'泡泡贴', desc:'弹跳：邻接每命中 +1，≥3 群聚再 +2（上限 6）', cap:6, visual:'mat-bubble' },
-  '烫金':   { label:'烫金',   desc:'点题：每推进订单 +2，完成再 +2（上限 10）', cap:10,visual:'mat-gold' },
-};
-
-// ===== 5 种外观 =====
-type FinishKey = '普通'|'金色闪粉'|'彩色闪粉'|'动态贴纸'|'荧光贴纸';
-const FINISHES: Record<FinishKey,{label:string;desc:string;cap:number;visual:string}> = {
-  '普通':     { label:'普通',     desc:'素色，无装饰能力',                                    cap:0, visual:'fin-normal' },
-  '金色闪粉': { label:'金色闪粉', desc:'高光：B ≥ 4 或 C ≥ 2 触发；奖励格再 +1（上限 4）',  cap:4, visual:'fin-gold' },
-  '彩色闪粉': { label:'彩色闪粉', desc:'彩屑：每邻位 +1，N ≥ 3 再 +1（上限 5）',             cap:5, visual:'fin-confetti' },
-  '动态贴纸': { label:'动态贴纸', desc:'节奏：本回合首触 +2，后续每次 +1（上限 2/次）',      cap:2, visual:'fin-dynamic' },
-  '荧光贴纸': { label:'荧光贴纸', desc:'迷雾揭示：每邻接迷雾揭示并翻倍（min 2F，上限 8）',   cap:8, visual:'fin-glow' },
-};
+type MaterialKey = StickerMaterialKey;
+type FinishKey = StickerFinishKey;
 
 // ===== 工具 =====
 const T:any = {
@@ -388,24 +386,6 @@ function shapeVisualBox(shape: Shape, rotation:number){
     height: `${heightScale * 100}%`,
   };
 }
-function materialDecoClass(material:string){
-  return {
-    '镭射':'shape-deco shape-deco-holo',
-    '布料':'shape-deco shape-deco-fabric',
-    '磨砂':'shape-deco shape-deco-frosted',
-    '水晶贴':'shape-deco shape-deco-crystal',
-    '泡泡贴':'shape-deco shape-deco-bubble',
-    '烫金':'shape-deco shape-deco-gold',
-  }[material] || '';
-}
-function finishDecoClass(finish:string){
-  return {
-    '金色闪粉':'shape-finish shape-finish-gold',
-    '彩色闪粉':'shape-finish shape-finish-confetti',
-    '动态贴纸':'shape-finish shape-finish-dynamic',
-    '荧光贴纸':'shape-finish shape-finish-glow',
-  }[finish] || '';
-}
 function choose(w:any, fb:string, seed:number){
   const e = Object.entries(w||{}).filter(([,v])=>Number(v)>0) as [string,number][];
   if(!e.length) return fb;
@@ -437,8 +417,10 @@ function StickerRender({
   variant:'placed'|'ghost';
   valid?:boolean;
 }) {
-  const matClass = materialDecoClass(material || '');
-  const finClass = finishDecoClass(finish || '');
+  const { materialClass: matClass, finishClass: finClass } = getStickerVariantDecoClasses(
+    (material as StickerMaterialKey | undefined) || undefined,
+    (finish as StickerFinishKey | undefined) || undefined,
+  );
   return <div
     className="sticker-render"
     data-variant={variant}
@@ -487,12 +469,18 @@ function cand(level:any, seed:number){
 function load(){
   try {
     const raw = acctGetItem(KEY);
-    return (raw && JSON.parse(raw)) || {bestScore:0,highestLevel:0,collection:[],cleared:[],diaryPages:1};
+    return (raw && JSON.parse(raw)) || {bestScore:0,highestLevel:0,collection:[],cleared:[],diaryPages:1,storyStars:{},starBalance:0,shopPurchases:[]};
   }
-  catch { return {bestScore:0,highestLevel:0,collection:[],cleared:[],diaryPages:1}; }
+  catch { return {bestScore:0,highestLevel:0,collection:[],cleared:[],diaryPages:1,storyStars:{},starBalance:0,shopPurchases:[]}; }
 }
 
 function Pill({label,value}:{label:string;value:any}){return <div className="rounded-2xl bg-white/80 px-3 py-2 text-center shadow"><div className="text-[11px] font-black text-[#9B7D62]">{label}</div><div className="text-lg font-black text-[#594A3C]">{value}</div></div>;}
+
+const SHOP_ITEMS = [
+  { id:'shop-mystery-pack', name:'神秘贴纸包', price:12, desc:'先作为商店占位商品，后续可扩充为关外解锁的新贴纸包。' },
+  { id:'shop-gold-foil-box', name:'闪耀素材盒', price:20, desc:'先作为占位商品，后续可扩充为限定材质或外观内容。' },
+  { id:'shop-diary-deco-set', name:'手账装饰组', price:28, desc:'先作为占位商品，后续可扩充为日记模式专属装饰贴纸。' },
+] as const;
 
 /**
  * 计分小卡：等宽 (由父级 .score-row grid 控制)，数值变化时触发 .score-bump 动画。
@@ -501,7 +489,7 @@ function Pill({label,value}:{label:string;value:any}){return <div className="rou
  *   保证连续连击不会被"动画已运行中"忽略；
  * - onAnimationEnd 移除 .score-bump 类，让下一次值变化能再次触发。
  */
-function ScoreTile({label,value,variant}:{label:string;value:number;variant?:'total'}){
+function ScoreTile({label,value,variant}:{label:string;value:number;variant?:'total'|'base'|'pattern'|'special'}){
   const prevRef = useRef<number>(value);
   const [bumpKey,setBumpKey] = useState<number>(0);
   useEffect(()=>{
@@ -515,7 +503,7 @@ function ScoreTile({label,value,variant}:{label:string;value:number;variant?:'to
   },[value]);
   const isTotal = variant === 'total';
   return (
-    <div className={`score-tile${isTotal?' score-tile-total':''}`}>
+    <div className={`score-tile${isTotal?' score-tile-total':''}${variant==='base'?' score-tile-base':''}${variant==='pattern'?' score-tile-pattern':''}${variant==='special'?' score-tile-special':''}`}>
       <div className="score-tile-label">{label}</div>
       <div className="score-tile-value-wrap">
         <span
@@ -542,7 +530,14 @@ function Home({progress,onEnter,account,onAccountChange}:any){
       '没有分数和回合限制，把已解锁的贴纸自由摆进日记本，做属于你自己的治愈手账。',
       '#A7D8FF'],
   ];
-  return <section className="flex flex-1 flex-col justify-center py-8">
+  const totalStars = Object.values(progress.storyStars || {}).reduce((sum:number,value:any)=>sum + Number(value || 0), 0);
+  return <section className="relative flex flex-1 flex-col justify-center py-8">
+    <div className="absolute right-0 top-0 flex items-center gap-3">
+      <div className="rounded-full bg-white/80 px-4 py-2 text-sm font-black shadow">⭐ 星星 {progress.starBalance || 0}</div>
+      <button onClick={()=>onEnter('shop')} className="inline-flex items-center gap-2 rounded-full bg-[#FFF7E8] px-4 py-2 text-sm font-black text-[#594A3C] shadow transition hover:-translate-y-0.5 hover:shadow-md">
+        <ShoppingBag className="h-4 w-4"/>商店
+      </button>
+    </div>
     <div className="mx-auto mb-8 max-w-4xl text-center">
       <div className="inline-flex items-center gap-2 rounded-full bg-white/70 px-4 py-2 text-sm font-black shadow">
         <Sparkles className="h-4 w-4 text-[#F7C948]" />手账拼贴 × 空间规划 × 轻肉鸽构筑
@@ -575,8 +570,8 @@ function Home({progress,onEnter,account,onAccountChange}:any){
     <div className="mx-auto mt-8 grid w-full max-w-4xl grid-cols-2 gap-3 md:grid-cols-4">
       <Pill label="最高分" value={progress.bestScore}/>
       <Pill label="已通关" value={`${progress.cleared.length}/16`}/>
-      <Pill label="收藏" value={progress.collection.length}/>
-      <Pill label="日记页" value={progress.diaryPages}/>
+      <Pill label="已收集星星" value={totalStars}/>
+      <Pill label="商店持有" value={(progress.shopPurchases || []).length}/>
     </div>
   </section>;
 }
@@ -589,6 +584,7 @@ const CHAPTER_META: Record<number,{title:string;desc:string;accent:string;icon:s
 
 function StoryLevelSelect({levels,progress,onSelect,onBack}:{levels:any[];progress:any;onSelect:(idx:number)=>void;onBack:()=>void}){
   const cleared:string[] = progress.cleared || [];
+  const storyStars = progress.storyStars || {};
   const highest:number = Math.min(progress.highestLevel||0, levels.length-1);
   const isUnlockedIdx = (i:number)=>{
     if(i===0) return true;
@@ -662,6 +658,7 @@ function StoryLevelSelect({levels,progress,onSelect,onBack}:{levels:any[];progre
                 const isCleared = cleared.includes(lv.key);
                 const isCurrent = i===currentIdx;
                 const stateMod = !unlocked ? 'is-locked' : isCurrent ? 'is-current' : isCleared ? 'is-cleared' : 'is-normal';
+                const earnedStars = Math.max(0, Math.min(3, Number(storyStars[lv.key] || 0)));
                 const coverUrl = STORY_COVERS[lv.key];
                 return <button
                   key={lv.key}
@@ -689,13 +686,52 @@ function StoryLevelSelect({levels,progress,onSelect,onBack}:{levels:any[];progre
                     <p className="card-sub">{lv.sub} · {lv.art}</p>
                     <div className="card-footer">
                       <span>目标：{lv.goal}</span>
-                      <span className="card-stars">★ {lv.star}+</span>
+                      <span className="card-stars">{'★'.repeat(earnedStars)}{'☆'.repeat(3-earnedStars)}</span>
                     </div>
                   </div>
                 </button>;
               })}
             </div>
           </div>;
+        })}
+      </div>
+    </div>
+  </section>;
+}
+
+function ShopPage({progress,onBack,onBuy}:{progress:any;onBack:()=>void;onBuy:(itemId:string)=>void}){
+  const purchased:string[] = progress.shopPurchases || [];
+  const starBalance = Number(progress.starBalance || 0);
+  return <section className="flex flex-1 flex-col py-6">
+    <div className="mx-auto w-full max-w-5xl px-2">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+        <button onClick={onBack} className="rounded-full bg-white/90 px-4 py-2 text-sm font-black shadow-sm hover:bg-white border border-[#E8E1D6]">← 返回主菜单</button>
+        <div className="text-center">
+          <h2 className="text-3xl font-black text-[#594A3C] md:text-4xl">星星商店</h2>
+          <p className="mt-1 text-sm font-bold text-[#9B7D62]">通过剧情手账通关评星收集星星，在这里兑换关外内容。</p>
+        </div>
+        <Pill label="当前星星" value={starBalance}/>
+      </div>
+      <div className="grid gap-4 md:grid-cols-3">
+        {SHOP_ITEMS.map(item=>{
+          const owned = purchased.includes(item.id);
+          const affordable = starBalance >= item.price;
+          return <article key={item.id} className="rounded-[2rem] border-4 border-white bg-white/80 p-5 shadow-2xl">
+            <div className="flex items-center justify-between gap-3">
+              <div className="rounded-2xl bg-[#FFF7E8] p-3 text-3xl">🛍️</div>
+              <span className="rounded-full bg-[#FFF1B8] px-3 py-1 text-sm font-black text-[#8D6200]">⭐ {item.price}</span>
+            </div>
+            <h3 className="mt-4 text-2xl font-black text-[#594A3C]">{item.name}</h3>
+            <p className="mt-2 min-h-[72px] text-sm font-bold leading-6 text-[#7A6958]">{item.desc}</p>
+            <button
+              type="button"
+              disabled={owned || !affordable}
+              onClick={()=>onBuy(item.id)}
+              className={`mt-5 w-full rounded-2xl py-3 font-black shadow ${owned ? 'cursor-default bg-[#EDE3D2] text-[#9B7D62]' : affordable ? 'bg-gradient-to-r from-[#F7C948] to-[#FFB7C5] text-[#594A3C]' : 'cursor-not-allowed bg-[#EFE3CF] text-[#A89A82]'}`}
+            >
+              {owned ? '已购买' : affordable ? '购买' : '星星不足'}
+            </button>
+          </article>;
         })}
       </div>
     </div>
@@ -713,8 +749,14 @@ function StickerCodex({unlocks,onClose}:{unlocks:string[];onClose:()=>void}){
   const [zoomStickerId,setZoomStickerId] = useState<string|null>(null);
   const [pickedId,setPickedId] = useState<string>(ALL_STICKER_IDS[0]);
   const picked = S.find(s=>s.id===pickedId);
+  const closeZoom = ()=>{
+    setZoomSrc(null);
+    setZoomMaterial(undefined);
+    setZoomFinish(undefined);
+    setZoomStickerId(null);
+  };
 
-  return <div className="codex-mask" onClick={onClose}>
+  return <div className="codex-mask" onClick={zoomSrc ? closeZoom : onClose}>
     <div className="codex-modal" onClick={(e)=>e.stopPropagation()}>
       <div className="codex-header">
         <h2>贴纸图鉴</h2>
@@ -750,12 +792,12 @@ function StickerCodex({unlocks,onClose}:{unlocks:string[];onClose:()=>void}){
               </div>
             </div>
             <div className="codex-matrix">
-              <div className="codex-matrix-head">
+              <div className="codex-matrix-head" style={{ gridTemplateColumns: `80px repeat(${CODEX_FINISHES.length}, minmax(0, 1fr))` }}>
                 <span></span>
                 {CODEX_FINISHES.map(f=><span key={f}>{f}</span>)}
               </div>
               {CODEX_MATERIALS.map(m=>(
-                <div key={m} className="codex-matrix-row">
+                <div key={m} className="codex-matrix-row" style={{ gridTemplateColumns: `80px repeat(${CODEX_FINISHES.length}, minmax(0, 1fr))` }}>
                   <span className="codex-matrix-rowname">{m}</span>
                   {CODEX_FINISHES.map(f=>{
                     const ok = revealed && isUnlocked(unlocks, picked.id, m as CMaterial, f as CFinish);
@@ -770,13 +812,13 @@ function StickerCodex({unlocks,onClose}:{unlocks:string[];onClose:()=>void}){
                         onKeyDown={ok?(e)=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); e.stopPropagation(); setZoomSrc(picked.asset); setZoomAlt(variantLabel); setZoomMaterial(m as CMaterial); setZoomFinish(f as CFinish); setZoomStickerId(picked.id); } }:undefined}
                       >
                         <img src={picked.asset} alt={revealed?picked.name:'未揭示贴纸'} draggable={false} className={ok?'':'codex-hidden-art'}/>
-                        {ok && <>
-                          {m==='镭射' && <div className="shape-deco shape-deco-holo"/>}
-                          {m==='水晶贴' && <div className="shape-deco shape-deco-crystal"/>}
-                          {m==='烫金' && <div className="shape-deco shape-deco-gold"/>}
-                          {f==='金色闪粉' && <div className="shape-finish shape-finish-gold"/>}
-                          {f==='荧光贴纸' && <div className="shape-finish shape-finish-glow"/>}
-                        </>}
+                        {ok && (()=>{
+                          const { materialClass, finishClass } = getStickerVariantDecoClasses(m as CMaterial, f as CFinish);
+                          return <>
+                            {materialClass && <div className={materialClass}/>}
+                            {finishClass && <div className={finishClass}/>}
+                          </>;
+                        })()}
                         {!ok && <Lock className="codex-lock-icon h-5 w-5"/>}
                       </div>
                       <span className="codex-cell-tag">{ok?'已解锁':'未解锁'}</span>
@@ -791,7 +833,7 @@ function StickerCodex({unlocks,onClose}:{unlocks:string[];onClose:()=>void}){
         </div>
       </div>
     </div>
-    <StickerLightbox src={zoomSrc} alt={zoomAlt} material={zoomMaterial as any} finish={zoomFinish as any} stickerId={zoomStickerId} onClose={()=>{ setZoomSrc(null); setZoomMaterial(undefined); setZoomFinish(undefined); setZoomStickerId(null); }}/>
+    <StickerLightbox src={zoomSrc} alt={zoomAlt} material={zoomMaterial as any} finish={zoomFinish as any} stickerId={zoomStickerId} onClose={closeZoom}/>
   </div>;
 }
 
@@ -958,8 +1000,9 @@ function Diary({onBack,onPublish,unlocks}:{onBack:()=>void;onPublish:()=>void;un
           const isEdit = editingId===item.id;
           const sc = item.scale || 1;
           // 日记中只用做 UI 渲染，不参与计分
-          const decoMat = item.kind==='sticker' ? (item.material==='镭射'?'shape-deco shape-deco-holo':item.material==='水晶贴'?'shape-deco shape-deco-crystal':item.material==='烫金'?'shape-deco shape-deco-gold':'') : '';
-          const decoFin = item.kind==='sticker' ? (item.finish==='金色闪粉'?'shape-finish shape-finish-gold':item.finish==='荧光贴纸'?'shape-finish shape-finish-glow':'') : '';
+          const { materialClass: decoMat, finishClass: decoFin } = item.kind==='sticker'
+            ? getStickerVariantDecoClasses(item.material as StickerMaterialKey | undefined, item.finish as StickerFinishKey | undefined)
+            : { materialClass:'', finishClass:'' };
           return <div key={item.id} className={`diary-item ${isSel?'selected':''}`} style={{left:item.x,top:item.y,transform:`rotate(${item.rotation}deg) scale(${sc})`,transformOrigin:'top left'}} onMouseDown={(e)=>onItemMouseDown(e,item)} onClick={(e)=>{e.stopPropagation();setSelectedId(item.id);}} onDoubleClick={(e)=>{ if(item.kind==='text'){e.stopPropagation();setEditingId(item.id);} }}>
             {item.kind==='sticker' ? <div className="diary-item-sticker-wrap" style={{ ['--sticker-mask' as any]: `url("${item.asset}")` } as React.CSSProperties}>
                 <img src={item.asset} alt={item.name} draggable={false} className="diary-item-sticker"/>
@@ -1001,8 +1044,9 @@ function Diary({onBack,onPublish,unlocks}:{onBack:()=>void;onPublish:()=>void;un
           {boxEntries.map(b=>{
             const variantLabel = (b.material==='普通'&&b.finish==='普通') ? '基础' : `${b.material==='普通'?'':b.material}${b.material!=='普通'&&b.finish!=='普通'?' · ':''}${b.finish==='普通'?'':b.finish}`;
             const key = `${b.id}-${b.material}-${b.finish}`;
-            const decoMat = b.unlocked ? (b.material==='镭射'?'shape-deco shape-deco-holo':b.material==='水晶贴'?'shape-deco shape-deco-crystal':b.material==='烫金'?'shape-deco shape-deco-gold':'') : '';
-            const decoFin = b.unlocked ? (b.finish==='金色闪粉'?'shape-finish shape-finish-gold':b.finish==='荧光贴纸'?'shape-finish shape-finish-glow':'') : '';
+            const { materialClass: decoMat, finishClass: decoFin } = b.unlocked
+              ? getStickerVariantDecoClasses(b.material, b.finish)
+              : { materialClass:'', finishClass:'' };
             if(!b.unlocked){
               return <button key={key} type="button" onClick={()=>{ setBoxToast(`「${b.name}」${variantLabel} 版本尚未解锁，前往派对高分模式挑战获取。`); setTimeout(()=>setBoxToast(''),2400); }} className="diary-sticker-item locked flex flex-col items-center gap-1 rounded-xl bg-white/40 p-2 cursor-not-allowed shadow-sm relative">
                 <div className="diary-sticker-art opacity-30 grayscale"><img src={b.asset} alt={b.name} draggable={false}/></div>
@@ -1131,6 +1175,14 @@ function variantAnimationFrames(stickerId:string):string[]|undefined{
   if(stickerId==='starry_star') return STAR_DYNAMIC_FRAMES;
   return undefined;
 }
+function partyChoiceOptions(layer:number):PartyChoiceOption[]{
+  return Array.from({length:3},(_,i)=>({
+    id:`party-choice-${layer}-${i}`,
+    title:`口袋补给 ${i+1}`,
+    detail:'获得 3 枚硬币',
+    coinReward:3,
+  }));
+}
 
 export default function HappyStickerBookGame(){
   // 账号系统：在挂载时初始化默认账号 + 迁移旧 key；切换账号通过 reloadKey 强制重建状态
@@ -1153,6 +1205,8 @@ function HappyStickerBookGameInner({account,onAccountChange}:{account:Account;on
   const [layerTransition,setLayerTransition] = useState<{show:boolean;layer:number}>({show:false,layer:1});
   const [failOpen,setFailOpen] = useState(false);
   const [dropToast,setDropToast] = useState<{id:string;name:string;material:string;finish:string;asset:string}|null>(null);
+  const [partyChoiceOpen,setPartyChoiceOpen] = useState(false);
+  const [partyChoices,setPartyChoices] = useState<PartyChoiceOption[]>([]);
   const [unlocks,setUnlocks] = useState<string[]>(()=>loadUnlocks());
 
   // mode==='party' 时使用 partyLevel；其它使用 L[levelIndex]
@@ -1167,12 +1221,14 @@ function HappyStickerBookGameInner({account,onAccountChange}:{account:Account;on
   const [specialScore,setSpecialScore] = useState(1);
   const [turn,setTurn] = useState(1);
   const [coins,setCoins] = useState(3);
-  const [energy,setEnergy] = useState(2);
+  const [scoreCoinMilestone,setScoreCoinMilestone] = useState(0);
   const [orders,setOrders] = useState<any[]>(()=>level.orders.map(([kind,label,target]:any)=>({kind,label,target,progress:0})));
   const [message,setMessage] = useState('选择候选贴纸，点击或拖拽到棋盘中。');
   const [logs,setLogs] = useState<string[]>([]);
   const [progress,setProgress] = useState<any>(()=>load());
   const [resultOpen,setResultOpen] = useState(false);
+  const [storyStarsEarned,setStoryStarsEarned] = useState(0);
+  const [storyStarsDelta,setStoryStarsDelta] = useState(0);
   const [dragIndex,setDragIndex] = useState<number|null>(null);
   const [hoverCell,setHoverCell] = useState<{row:number;col:number}|null>(null);
   const boardRef = useRef<HTMLDivElement|null>(null);
@@ -1186,10 +1242,14 @@ function HappyStickerBookGameInner({account,onAccountChange}:{account:Account;on
 
   const [fxEvent,setFxEvent] = useState<FxEvent|null>(null);
   const [floatLogs,setFloatLogs] = useState<{id:string;txt:string;kind:'base'|'pattern'|'special'}[]>([]);
+  const [coinBurst,setCoinBurst] = useState<CoinBurst|null>(null);
+  const [boardScorePopups,setBoardScorePopups] = useState<BoardScorePopup[]>([]);
 
   const selected = candidates[selectedIndex] || candidates[0];
   const total = baseScore * Math.max(1,patternScore) * Math.max(1,specialScore);
   const stars = Math.max(1,Math.min(3,Math.ceil(total/Math.max(1,level.star))));
+  const storyStarProgress = mode==='story' ? Math.max(0, Math.min(1, total / Math.max(1, level.star * 3))) : 0;
+  const collectedStoryStars = Math.max(0, Math.min(3, Number((progress.storyStars || {})[level?.key] || 0)));
 
   useEffect(()=>acctSetItem(KEY,JSON.stringify(progress)),[progress]);
   useEffect(()=>saveUnlocks(unlocks),[unlocks]);
@@ -1207,6 +1267,12 @@ function HappyStickerBookGameInner({account,onAccountChange}:{account:Account;on
     const t = setTimeout(()=>setDropToast(null), 1200);
     return ()=>clearTimeout(t);
   },[dropToast]);
+
+  useEffect(()=>{
+    if(!coinBurst) return;
+    const t = setTimeout(()=>setCoinBurst(null), 880);
+    return ()=>clearTimeout(t);
+  },[coinBurst]);
 
   // 全局键盘控制：
   //  ←/A 逆时针、→/D 顺时针旋转当前选中贴纸；
@@ -1317,13 +1383,38 @@ function HappyStickerBookGameInner({account,onAccountChange}:{account:Account;on
     setCandidates([cand(n,seedBase+1),cand(n,seedBase+2),cand(n,seedBase+3)]);
     setSelectedIndex(0);
     setBaseScore(0); setPatternScore(1); setSpecialScore(1);
-    setTurn(1); setCoins(3); setEnergy(2);
+    setTurn(1); setCoins(3); setScoreCoinMilestone(0);
     setOrders(n.orders.map(([kind,label,target]:any)=>({kind,label,target,progress:0})));
     setLogs([]);
     setMessage(isParty?`第 ${layerNum} 层：${n.goal}`:`${n.key} ${n.name}：${n.goal}`);
     setResultOpen(false); setDragIndex(null); setHoverCell(null);
     setFabricStack(0); setDynamicTurn({turn:0,fired:false}); setLastChainPattern(0);
-    setFxEvent(null); setFloatLogs([]);
+    setFxEvent(null); setFloatLogs([]); setCoinBurst(null);
+    setPartyChoiceOpen(false); setPartyChoices([]);
+    setStoryStarsEarned(0); setStoryStarsDelta(0);
+  };
+
+  const buyShopItem = (itemId:string)=>{
+    const item = SHOP_ITEMS.find(entry=>entry.id===itemId);
+    if(!item) return;
+    setProgress((cur:any)=>{
+      const purchases = cur.shopPurchases || [];
+      if(purchases.includes(item.id)){
+        setMessage(`${item.name} 已购买。`);
+        return cur;
+      }
+      const balance = Number(cur.starBalance || 0);
+      if(balance < item.price){
+        setMessage(`星星不足，购买 ${item.name} 需要 ${item.price} 颗星星。`);
+        return cur;
+      }
+      setMessage(`已购买 ${item.name}，后续可在这里扩充更多关外内容。`);
+      return {
+        ...cur,
+        starBalance: balance - item.price,
+        shopPurchases: [...purchases, item.id],
+      };
+    });
   };
 
   const reset = (idx=levelIndex,nextMode=mode)=>{
@@ -1343,6 +1434,14 @@ function HappyStickerBookGameInner({account,onAccountChange}:{account:Account;on
   // 派对模式：进入下一层
   const advancePartyLayer = ()=>{
     const next = partyLayer + 1;
+    setPartyChoices(partyChoiceOptions(next));
+    setPartyChoiceOpen(true);
+  };
+  const choosePartyReward = (choice:PartyChoiceOption)=>{
+    const next = partyLayer + 1;
+    setCoins(v=>v + choice.coinReward);
+    setCoinBurst({ id:`party-choice-${Date.now()}`, source:'party-choice', amount:choice.coinReward, label:`+${choice.coinReward} 硬币` });
+    setPartyChoiceOpen(false);
     setLayerTransition({show:true,layer:next});
     setTimeout(()=>{
       const pl = generatePartyLevel(next);
@@ -1350,7 +1449,7 @@ function HappyStickerBookGameInner({account,onAccountChange}:{account:Account;on
       setPartyLevel(pl);
       setupLevel(pl, true, next);
       setLayerTransition({show:false,layer:next});
-    }, 700);
+    }, 720);
   };
 
   // 派对模式：失败处理 - 弹出确认对话框
@@ -1530,10 +1629,8 @@ function HappyStickerBookGameInner({account,onAccountChange}:{account:Account;on
   };
 
   const maybe = (score:number)=>{
-    const allOrdersDone = orders.every(o=>o.progress>=o.target);
     if(mode==='party'){
-      // 派对模式：订单全部完成 → 自动推进下一层 + 掉落
-      if(allOrdersDone){
+      if(score>=level.targetScore){
         // 解锁掉落
         const drop = rollDrop(unlocks, partyLayer, ALL_STICKER_IDS);
         if(drop){
@@ -1556,17 +1653,35 @@ function HappyStickerBookGameInner({account,onAccountChange}:{account:Account;on
       }
       return;
     }
-    if(allOrdersDone||score>=level.star*3||placed.length>22){
+    const allOrdersDone = orders.every(o=>o.progress>=o.target);
+    if(mode==='story' && allOrdersDone){
+      const earnedStars = Math.max(1, Math.min(3, Math.ceil(score / Math.max(1, level.star))));
+      const prevStars = Math.max(0, Math.min(3, Number((progress.storyStars || {})[level.key] || 0)));
+      const starsDelta = Math.max(0, earnedStars - prevStars);
       setResultOpen(true);
-      setProgress((cur:any)=>({...cur,bestScore:Math.max(cur.bestScore,score),highestLevel:mode==='story'?Math.max(cur.highestLevel,Math.min(levelIndex+1,L.length-1)):cur.highestLevel,cleared:Array.from(new Set([...cur.cleared,level.key]))}));
+      setStoryStarsEarned(earnedStars);
+      setStoryStarsDelta(starsDelta);
+      setProgress((cur:any)=>{
+        return {
+          ...cur,
+          bestScore: Math.max(cur.bestScore, score),
+          highestLevel: Math.max(cur.highestLevel, Math.min(levelIndex + 1, L.length - 1)),
+          cleared: Array.from(new Set([...cur.cleared, level.key])),
+          storyStars: { ...(cur.storyStars || {}), [level.key]: Math.max(Math.max(0, Math.min(3, Number((cur.storyStars || {})[level.key] || 0))), earnedStars) },
+          starBalance: Number(cur.starBalance || 0) + starsDelta,
+        };
+      });
+      return;
+    }
+    if(mode==='story' && placed.length>22){
+      setMessage('订单尚未全部完成，剧情手账不会按分数直接通关。');
     }
   };
 
-  // 派对模式失败检测：每次贴入后若已贴 > 24 次仍未完成订单，则视为失败
+  // 派对模式失败检测：每次贴入后若已贴满且未达到目标总分，则视为失败
   const checkPartyFail = ()=>{
     if(mode!=='party') return;
-    const allOrdersDone = orders.every(o=>o.progress>=o.target);
-    if(allOrdersDone) return;
+    if(total >= level.targetScore || partyChoiceOpen) return;
     if(placed.length >= 26){
       setTimeout(()=>partyFail(), 100);
     }
@@ -1577,6 +1692,29 @@ function HappyStickerBookGameInner({account,onAccountChange}:{account:Account;on
     const id = `f-${Date.now()}-${Math.random().toFixed(3)}`;
     setFloatLogs(cur=>[...cur,{id,txt,kind}]);
     setTimeout(()=>setFloatLogs(cur=>cur.filter(f=>f.id!==id)),2200);
+  };
+  const pushBoardScorePopups = (cells:[number,number][], totalValue:number, kind:'base'|'pattern'|'special', label?:string, stackIndex = 0)=>{
+    if(totalValue<=0 || cells.length===0) return;
+    const base = Math.floor(totalValue / cells.length);
+    const rem = totalValue % cells.length;
+    const popups = cells.map(([row,col],index)=>({
+      id:`bsp-${kind}-${Date.now()}-${index}-${Math.random().toFixed(3)}`,
+      row,
+      col,
+      value: base + (index < rem ? 1 : 0),
+      kind,
+      label,
+      stackIndex,
+      dx: ((index % 2 === 0 ? -1 : 1) * (6 + (index % 3) * 3)) + ((row + col) % 3 - 1) * 2,
+      dy: -10 - stackIndex * 22 - (index % 3) * 6,
+      delay: stackIndex * 90 + index * 35,
+    })).filter(item=>item.value>0);
+    if(popups.length===0) return;
+    setBoardScorePopups(cur=>[...cur,...popups]);
+    setTimeout(()=>{
+      const ids = new Set(popups.map(item=>item.id));
+      setBoardScorePopups(cur=>cur.filter(item=>!ids.has(item.id)));
+    }, 1600);
   };
 
   const applyTool = (i:number,r:number,c:number)=>{
@@ -1759,6 +1897,7 @@ function HappyStickerBookGameInner({account,onAccountChange}:{account:Account;on
     // 计算材质分
     let sg = 0;
     const detailLines:string[] = [];
+    const specialPopupEntries:{ value:number; label:string }[] = [];
 
     // 布料：每贴 +1 蓄积；满 3 层兑现 +5
     let nextFabricStack = fabricStack;
@@ -1767,6 +1906,7 @@ function HappyStickerBookGameInner({account,onAccountChange}:{account:Account;on
       if(nextFabricStack>=3){
         sg += 5;
         detailLines.push(`布料兑现 +5（蓄积 3/3）`);
+        specialPopupEntries.push({ value:5, label:'布料' });
         nextFabricStack = 0;
       } else {
         detailLines.push(`布料蓄积 ${nextFabricStack}/3`);
@@ -1778,25 +1918,32 @@ function HappyStickerBookGameInner({account,onAccountChange}:{account:Account;on
       hi, stainAdj, chainPattern: lastChainPattern, orderProgressed, orderCompleted,
       stableHits,
     });
-    if(matRes.score>0){ sg += matRes.score; detailLines.push(matRes.detail); }
+    if(matRes.score>0){
+      sg += matRes.score;
+      detailLines.push(matRes.detail);
+      specialPopupEntries.push({ value:matRes.score, label:MATERIALS[activeSticker.material as MaterialKey].label });
+    }
 
     // 外观
     const finRes = computeFinish(activeSticker.finish as FinishKey, {
       B: bg, C: lastChainPattern, N: activeAdj.count, hi, F: fogReveal, dynamicFirst,
     });
-    if(finRes.score>0){ sg += finRes.score; detailLines.push(finRes.detail); }
+    if(finRes.score>0){
+      sg += finRes.score;
+      detailLines.push(finRes.detail);
+      specialPopupEntries.push({ value:finRes.score, label:FINISHES[activeSticker.finish as FinishKey].label });
+    }
 
     const nb = baseScore + bg;
     const np = patternScore + pg;
     const ns = specialScore + sg;
     const nt = nb * Math.max(1,np) * Math.max(1,ns);
+    const popupCells = activeCells.map(([dr,dc])=>[activeRow + dr, activeCol + dc] as [number,number]);
 
     setBoard(upgrade ? upgrade.board : n);
     setPlaced(placedAfter);
     setBaseScore(nb); setPatternScore(np); setSpecialScore(ns);
     setTurn(v=>v+1);
-    setCoins(v=>v + (activeSticker.type==='植物'?1:0));
-    setEnergy(v=>v + (activeAdj.count>=3?1:0));
     setFabricStack(nextFabricStack);
     setLastChainPattern(pg);
     if(activeSticker.finish==='动态贴纸'){
@@ -1810,6 +1957,11 @@ function HappyStickerBookGameInner({account,onAccountChange}:{account:Account;on
     // 浮字
     if(bg>0) pushFloat(`基础分 +${bg}`, 'base');
     if(pg>0) pushFloat(`构型分 +${pg}`, 'pattern');
+    if(sg>0) pushFloat(`材质特效分 +${sg}`, 'special');
+    let popupStackIndex = 0;
+    if(bg>0) pushBoardScorePopups(popupCells, bg, 'base', '基础', popupStackIndex++);
+    if(pg>0) pushBoardScorePopups(popupCells, pg, 'pattern', '构型', popupStackIndex++);
+    specialPopupEntries.forEach(entry=>pushBoardScorePopups(popupCells, entry.value, 'special', entry.label, popupStackIndex++));
     if(upgrade) pushFloat(`${activeSticker.name} 升级！`, 'special');
     extraUpgraded.forEach((item:any)=>pushFloat(`${item.name} 共鸣升级！`, 'special'));
     detailLines.forEach(d=> pushFloat(d, 'special'));
@@ -1821,6 +1973,17 @@ function HappyStickerBookGameInner({account,onAccountChange}:{account:Account;on
       ...detailLines.map(d=>`  · ${d}`),
     ];
     setLogs(cur=>[...logLines, ...cur].slice(0,12));
+
+    if(mode==='story'){
+      const nextMilestone = Math.floor(nt / 1000);
+      const gainedCoins = Math.max(0, nextMilestone - scoreCoinMilestone);
+      if(gainedCoins>0){
+        setCoins(v=>v + gainedCoins);
+        setScoreCoinMilestone(nextMilestone);
+        setCoinBurst({ id:`story-score-${Date.now()}`, source:'score', amount:gainedCoins, label:`+${gainedCoins} 硬币` });
+        pushFloat(`硬币 +${gainedCoins}`, 'special');
+      }
+    }
 
     // 触发入场特效展演
     setFxEvent({ id:`fx-${Date.now()}`, material:activeSticker.material as MaterialKey, finish:activeSticker.finish as FinishKey, asset:activeSticker.asset, name:activeSticker.name, isUpgrade:!!upgrade, animationFrames:activeSticker.animationFrames });
@@ -1873,12 +2036,12 @@ function HappyStickerBookGameInner({account,onAccountChange}:{account:Account;on
     setMessage('贴纸已旋转，轮廓和棋盘预览已更新。');
   };
   const refresh = ()=>{
-    if(coins<3){ setMessage('金币不足，刷新需要 3 枚金币。'); return; }
+    if(coins<3){ setMessage('硬币不足，刷新需要 3 枚硬币。'); return; }
     setCoins(v=>v-3);
     setCandidates([cand(level,total+31),cand(level,total+37),cand(level,total+41)]);
   };
   const recycle = ()=>{
-    if(energy<2||!placed.length){ setMessage('小回收需要 2 点能量，且棋盘上要有贴纸。'); return; }
+    if(coins<5||!placed.length){ setMessage('回收需要 5 枚硬币，且棋盘上要有贴纸。'); return; }
     const t = placed[placed.length-1];
     const n = board.map(line=>line.map(cell=>({...cell})));
     t.cells.forEach(([dr,dc]:number[])=>{
@@ -1888,8 +2051,8 @@ function HappyStickerBookGameInner({account,onAccountChange}:{account:Account;on
     });
     setBoard(n);
     setPlaced(cur=>cur.slice(0,-1));
-    setEnergy(v=>v-2);
-    setMessage(`小回收移除了 ${t.name}。`);
+    setCoins(v=>v-5);
+    setMessage(`回收移除了 ${t.name}。`);
   };
 
   return <main className="min-h-screen overflow-hidden bg-[#FFF7E8] text-[#594A3C]">
@@ -1919,6 +2082,7 @@ function HappyStickerBookGameInner({account,onAccountChange}:{account:Account;on
 
       {mode==='home' && <Home progress={progress} onEnter={enter} account={account} onAccountChange={onAccountChange}/>}
       {mode==='storyMenu' && <StoryLevelSelect levels={L} progress={progress} onSelect={enterStoryLevel} onBack={()=>setMode('home')}/>}
+      {mode==='shop' && <ShopPage progress={progress} onBack={()=>setMode('home')} onBuy={buyShopItem}/>}
       {mode==='diary' && <Diary unlocks={unlocks} onBack={()=>setMode('home')} onPublish={()=>setProgress((cur:any)=>({...cur,diaryPages:cur.diaryPages+1}))}/>}
 
       {(mode==='story'||mode==='party') && <section className="grid flex-1 gap-4 py-4 lg:grid-cols-[1fr_540px]">
@@ -1932,11 +2096,11 @@ function HappyStickerBookGameInner({account,onAccountChange}:{account:Account;on
                 四张卡片用 grid 等宽，三个运算符 (× × =) 作为独立 flex 元素夹在中间不占等宽列；
                 数值变化时 ScoreTile 内部用 nonce key 重启 .score-bump 动画。 */}
             <div className="score-row">
-              <ScoreTile label="基础" value={baseScore}/>
+              <ScoreTile label="基础" value={baseScore} variant="base"/>
               <span className="score-op" aria-hidden="true">×</span>
-              <ScoreTile label="构型" value={patternScore}/>
+              <ScoreTile label="构型" value={patternScore} variant="pattern"/>
               <span className="score-op" aria-hidden="true">×</span>
-              <ScoreTile label="材质特效" value={specialScore}/>
+              <ScoreTile label="材质特效" value={specialScore} variant="special"/>
               <span className="score-op score-op-eq" aria-hidden="true">=</span>
               <ScoreTile label="总分" value={total} variant="total"/>
             </div>
@@ -1987,6 +2151,14 @@ function HappyStickerBookGameInner({account,onAccountChange}:{account:Account;on
                   绝对定位贴在 game-board 之上；不参与 game-board 自身的网格排布，因此格子不会被挤走或替换。
                   pointer-events:none 让格子继续接收点击 / 拖拽事件。 */}
               <div className="game-board-overlay" aria-hidden="true">
+                {boardScorePopups.map(popup=><span key={popup.id} className={`board-score-popup board-score-popup-${popup.kind}`} style={{
+                  gridColumn: `${popup.col+1}`,
+                  gridRow: `${popup.row+1}`,
+                  zIndex: `${10 + popup.stackIndex}`,
+                  ['--popup-dx' as any]: `${popup.dx}px`,
+                  ['--popup-dy' as any]: `${popup.dy}px`,
+                  ['--popup-delay' as any]: `${popup.delay}ms`,
+                }}>{popup.label ? `${popup.label} +${popup.value}` : `+${popup.value}`}</span>)}
                 {placed.map((p,idx)=>{
                   const layout = shapeLayout(p.shape, p.rotation || 0);
                   const shapeRows = layout.rows;
@@ -2069,14 +2241,34 @@ function HappyStickerBookGameInner({account,onAccountChange}:{account:Account;on
           </div>
         </div>
 
-        <aside className="space-y-4 rounded-[2.5rem] border-4 border-white bg-white/80 p-4 shadow-2xl">
+        {mode==='story' ? <aside className="space-y-4 rounded-[2.5rem] border-4 border-white bg-white/80 p-4 shadow-2xl">
           <div className="rounded-3xl bg-[#FFF7E8] p-4">
-            <h4 className="mb-3 flex items-center gap-2 font-black"><Trophy className="h-5 w-5 text-[#F7C948]"/>订单目标</h4>
+            <h4 className="mb-3 flex items-center gap-2 font-black"><Trophy className="h-5 w-5 text-[#F7C948]"/>剧情订单</h4>
             <div className="space-y-2">{orders.map((o,i)=><ProgressBar key={`${o.kind}-${i}`} order={o}/>)}</div>
           </div>
 
+          <div className="rounded-3xl bg-[#FFF7E8] p-4">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <h4 className="flex items-center gap-2 font-black"><Star className="h-5 w-5 text-[#F7C948]"/>关卡评星进度</h4>
+              <span className="rounded-full bg-white px-3 py-1 text-xs font-black text-[#9B7D62]">已收集：{'★'.repeat(collectedStoryStars)}{'☆'.repeat(3-collectedStoryStars)}</span>
+            </div>
+            <div className="grid grid-cols-3 gap-2 text-center text-xs font-black text-[#7A6958]">
+              {[1,2,3].map(count=><div key={count} className={`rounded-2xl px-3 py-2 ${stars>=count ? 'bg-[#FFF1B8] text-[#8D6200]' : 'bg-white/80 text-[#9B7D62]'}`}>
+                <div className="text-lg tracking-[0.2em]">{'★'.repeat(count)}{'☆'.repeat(3-count)}</div>
+                <div className="mt-1">{level.star * count} 分</div>
+              </div>)}
+            </div>
+            <div className="mt-3 h-3 overflow-hidden rounded-full bg-white/80">
+              <div className="h-full rounded-full bg-gradient-to-r from-[#F7C948] to-[#FFB7C5]" style={{width:`${Math.round(storyStarProgress * 100)}%`}} />
+            </div>
+            <div className="mt-2 flex items-center justify-between text-xs font-black text-[#7A6958]">
+              <span>当前得分：{total}</span>
+              <span>当前可达：{'★'.repeat(stars)}{'☆'.repeat(3-stars)}</span>
+            </div>
+          </div>
+
           <div className="flex items-center justify-between">
-            <h3 className="text-2xl font-black">候选内容</h3>
+            <h3 className="text-2xl font-black">候选贴纸</h3>
             <div className="rounded-full bg-[#FFF7E8] px-3 py-1 text-xs font-black">回合 {turn} · 布料 {fabricStack}/3</div>
           </div>
 
@@ -2106,12 +2298,9 @@ function HappyStickerBookGameInner({account,onAccountChange}:{account:Account;on
               className={`candidate-card kind-${c.kind} ${selectedIndex===i?'selected':''}`}>
               <div className="candidate-kind-badge">{c.kind==='sticker'?'贴纸':'道具'}</div>
               {c.kind==='sticker' ? (()=>{
-                // 候选区使用固定外框（CANDIDATE_BOX × CANDIDATE_BOX），PNG 在固定框内按原拓扑等比缩放并按 rotation 旋转。
-                // 这样切换/旋转贴纸时候选卡片本身的尺寸不会跳动，所有贴纸视觉占位一致。
                 const baseRows = Math.max(...c.shape.map(([r]:number[])=>r))+1;
                 const baseCols = Math.max(...c.shape.map(([,col]:number[])=>col))+1;
-                const CANDIDATE_BOX = 96; // px, 候选预览区固定外框
-                // 内部 art 按原拓扑宽高比 fit 到 CANDIDATE_BOX 内（contain 思路）
+                const CANDIDATE_BOX = 96;
                 const ratio = baseCols / baseRows;
                 let innerW: number, innerH: number;
                 if (ratio >= 1) { innerW = CANDIDATE_BOX; innerH = CANDIDATE_BOX / ratio; }
@@ -2135,10 +2324,6 @@ function HappyStickerBookGameInner({account,onAccountChange}:{account:Account;on
                   <span className={`tag tag-${MATERIALS[c.material as MaterialKey].visual}`} title={MATERIALS[c.material as MaterialKey].desc}>{c.material}</span>
                   <span className={`tag tag-${FINISHES[c.finish as FinishKey].visual}`} title={FINISHES[c.finish as FinishKey].desc}>{c.finish}</span>
                 </div>}
-                {c.kind==='sticker' && (c.material!=='普通' || c.finish!=='普通') && <p className="mt-1 text-[10px] font-bold text-[#9B7D62] leading-snug">
-                  {c.material!=='普通' && <>· {MATERIALS[c.material as MaterialKey].desc}<br/></>}
-                  {c.finish!=='普通' && <>· {FINISHES[c.finish as FinishKey].desc}</>}
-                </p>}
               </div>
             </button>)}
           </div>
@@ -2149,8 +2334,8 @@ function HappyStickerBookGameInner({account,onAccountChange}:{account:Account;on
             <button onClick={recycle} className="tool-button"><Eraser className="h-4 w-4"/>回收</button>
           </div>
           <div className="grid grid-cols-3 gap-2">
-            <Pill label="金币" value={coins}/>
-            <Pill label="能量" value={energy}/>
+            <Pill label="硬币" value={coins}/>
+            <Pill label="剧情目标" value={level.goal}/>
             <Pill label="星级" value={'★'.repeat(stars)}/>
           </div>
 
@@ -2162,22 +2347,118 @@ function HappyStickerBookGameInner({account,onAccountChange}:{account:Account;on
           </div>
 
           <div className="rounded-3xl bg-[#9EE6C9]/30 p-4 text-sm font-bold leading-6"><Gift className="mb-2 h-5 w-5"/>首通解锁：章节贴纸、材质外观与主题背景。</div>
-        </aside>
+        </aside> : <aside className="space-y-4 rounded-[2.5rem] border-4 border-white bg-[#FFF8EE] p-4 shadow-2xl">
+          <div className="rounded-3xl bg-white p-4 shadow-inner">
+            <h4 className="mb-2 flex items-center gap-2 font-black"><Trophy className="h-5 w-5 text-[#F7C948]"/>派对高分</h4>
+            <p className="text-sm font-bold text-[#7A6958] leading-6">本层不再完成订单，而是用有限贴纸数冲到目标总分。到达目标后先选一项奖励，再进入下一层。</p>
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              <Pill label="当前总分" value={total}/>
+              <Pill label="目标总分" value={level.targetScore}/>
+              <Pill label="硬币" value={coins}/>
+              <Pill label="层数" value={`第 ${partyLayer} 层`}/>
+            </div>
+          </div>
+
+          <div className="rounded-3xl bg-[#FFF1C9] p-4 text-sm font-bold leading-6">
+            <Sparkles className="mb-2 h-5 w-5"/>
+            过层奖励：每次达到目标总分后，会先弹出三选一奖励。当前阶段三个选项都用硬币奖励占位，后续可扩展为能力、掉落与特殊机制。
+          </div>
+
+          <div className="flex items-center justify-between">
+            <h3 className="text-2xl font-black">候选内容</h3>
+            <div className="rounded-full bg-white px-3 py-1 text-xs font-black">回合 {turn} · 布料 {fabricStack}/3</div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-3">
+            {candidates.map((c,i)=><button key={c.instanceId}
+              draggable
+              onDragStart={(e)=>{
+                e.dataTransfer.setData('text/plain',String(i));
+                setSelectedIndex(i); setDragIndex(i);
+                const ghost = document.createElement('div');
+                ghost.className='drag-ghost';
+                ghost.style.cssText='position:fixed;top:-9999px;left:-9999px;width:80px;height:80px;display:flex;align-items:center;justify-content:center;pointer-events:none;background:transparent;border:none;';
+                if(c.kind==='sticker'){
+                  const img=document.createElement('img');
+                  img.src=c.asset;
+                  img.style.cssText='width:80px;height:80px;object-fit:contain;filter:drop-shadow(0 4px 8px rgba(89,74,60,.25));';
+                  ghost.appendChild(img);
+                } else {
+                  ghost.style.fontSize='48px'; ghost.textContent=c.icon;
+                }
+                document.body.appendChild(ghost);
+                e.dataTransfer.setDragImage(ghost,40,40);
+                setTimeout(()=>{ if(ghost.parentNode) ghost.parentNode.removeChild(ghost); },0);
+              }}
+              onDragEnd={()=>{ setDragIndex(null); setHoverCell(null); }}
+              onClick={()=>setSelectedIndex(i)}
+              className={`candidate-card kind-${c.kind} ${selectedIndex===i?'selected':''}`}>
+              <div className="candidate-kind-badge">{c.kind==='sticker'?'贴纸':'道具'}</div>
+              {c.kind==='sticker' ? (()=>{
+                const baseRows = Math.max(...c.shape.map(([r]:number[])=>r))+1;
+                const baseCols = Math.max(...c.shape.map(([,col]:number[])=>col))+1;
+                const CANDIDATE_BOX = 96;
+                const ratio = baseCols / baseRows;
+                let innerW: number, innerH: number;
+                if (ratio >= 1) { innerW = CANDIDATE_BOX; innerH = CANDIDATE_BOX / ratio; }
+                else { innerH = CANDIDATE_BOX; innerW = CANDIDATE_BOX * ratio; }
+                return <div className="candidate-art shape-preview" style={{width:`${CANDIDATE_BOX}px`, height:`${CANDIDATE_BOX}px`, display:'flex', alignItems:'center', justifyContent:'center'}}>
+                  <div style={{width:`${innerW}px`, height:`${innerH}px`, transform:`rotate(${c.rotation}deg)`, transformOrigin:'center center', display:'flex', alignItems:'center', justifyContent:'center'} as React.CSSProperties}>
+                    <img src={c.asset} alt={c.name} draggable={false}
+                         className={`candidate-shape-img ${MATERIALS[c.material as MaterialKey].visual} ${FINISHES[c.finish as FinishKey].visual}`}
+                         style={{width:'100%', height:'100%', objectFit:'contain'} as React.CSSProperties}/>
+                  </div>
+                </div>;
+              })() : <div className="candidate-art"><span>{c.icon}</span></div>}
+              <div className="min-w-0 flex-1 text-left">
+                <div className="flex items-center justify-between gap-2">
+                  <strong>{c.name}</strong>
+                  {c.kind==='sticker' && <span className="rounded-full bg-[#FFF7E8] px-2 py-1 text-[10px] font-black">{c.rotation}°</span>}
+                </div>
+                <p className="mt-1 text-xs font-bold text-[#7A6958]">{c.kind==='sticker'?`形状：${SHAPE_LABEL[c.shapeKey]||''}`:c.note}</p>
+                {c.kind==='sticker' && <div className="mt-2 flex flex-wrap gap-1">
+                  <span className="tag">{c.type}</span>
+                  <span className={`tag tag-${MATERIALS[c.material as MaterialKey].visual}`} title={MATERIALS[c.material as MaterialKey].desc}>{c.material}</span>
+                  <span className={`tag tag-${FINISHES[c.finish as FinishKey].visual}`} title={FINISHES[c.finish as FinishKey].desc}>{c.finish}</span>
+                </div>}
+              </div>
+            </button>)}
+          </div>
+
+          <div className="grid grid-cols-3 gap-2">
+            <button onClick={rotate} className="tool-button"><RotateCw className="h-4 w-4"/>旋转</button>
+            <button onClick={refresh} className="tool-button"><RefreshCw className="h-4 w-4"/>刷新</button>
+            <button onClick={recycle} className="tool-button"><Eraser className="h-4 w-4"/>回收</button>
+          </div>
+
+          <div className="rounded-3xl bg-white/80 p-4 shadow-inner">
+            <h4 className="mb-2 flex items-center gap-2 font-black"><Layers className="h-4 w-4"/>冲分日志</h4>
+            <div className="space-y-2 text-xs font-bold text-[#7A6958] max-h-56 overflow-y-auto">
+              {logs.length===0?<p>派对高分会记录每次贴入后的得分变化与升级表现。</p>:logs.map((log,idx)=><p key={`${log}-${idx}`} className="rounded-2xl bg-[#FFF7E8] p-2">{log}</p>)}
+            </div>
+          </div>
+        </aside>}
       </section>}
 
       {resultOpen && <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#594A3C]/35 p-4 backdrop-blur-sm">
         <div className="w-full max-w-md rounded-[2rem] border-4 border-white bg-[#FFF7E8] p-6 text-center shadow-2xl">
           <Sparkles className="mx-auto h-12 w-12 text-[#F7C948]"/>
           <h2 className="mt-3 text-3xl font-black">关卡结算</h2>
-          <p className="mt-2 font-bold">{level.key} {level.name} · {stars} 星</p>
+          <p className="mt-2 font-bold">{level.key} {level.name} · {mode==='story' ? storyStarsEarned : stars} 星</p>
           <p className="mt-2 text-4xl font-black">{total}</p>
           {mode==='story' ? (() => {
             const isLast = levelIndex >= L.length-1;
-            return <div className="mt-5 grid grid-cols-3 gap-2">
+            return <>
+              <div className="mt-4 rounded-3xl bg-white/75 px-4 py-3 shadow-inner">
+                <div className="text-3xl tracking-[0.35em] text-[#F7C948]">{'★'.repeat(storyStarsEarned)}{'☆'.repeat(3-storyStarsEarned)}</div>
+                <p className="mt-2 text-sm font-black text-[#7A6958]">订单全部完成后按得分评星，本次新增星星 {storyStarsDelta}</p>
+              </div>
+              <div className="mt-5 grid grid-cols-3 gap-2">
               <button onClick={()=>reset(levelIndex,mode)} className="rounded-2xl border-2 border-[#F7C948]/40 bg-white py-3 font-black text-[#594A3C] shadow">重玩本关</button>
               <button onClick={()=>{ setResultOpen(false); setMode('storyMenu'); }} className="rounded-2xl border-2 border-[#FFB7C5]/55 bg-white py-3 font-black text-[#594A3C] shadow">返回目录</button>
               <button onClick={()=>{ if(!isLast) reset(levelIndex+1,mode); }} disabled={isLast} className={`rounded-2xl py-3 font-black shadow ${isLast?'cursor-not-allowed bg-[#EFE3CF] text-[#A89A82]':'bg-gradient-to-r from-[#F7C948] to-[#FFB7C5] text-[#594A3C]'}`}>{isLast?'已通关':'下一关'}</button>
-            </div>;
+              </div>
+            </>;
           })() : <div className="mt-5 grid grid-cols-2 gap-3">
             <button onClick={()=>reset(levelIndex,mode)} className="rounded-2xl bg-white py-3 font-black shadow">再来一局</button>
             <button onClick={()=>reset(Math.min(levelIndex+1,L.length-1),mode)} className="rounded-2xl bg-[#FFB7C5] py-3 font-black shadow">下一关</button>
@@ -2186,6 +2467,25 @@ function HappyStickerBookGameInner({account,onAccountChange}:{account:Account;on
       </div>}
       {/* 派对模式 · 弹幕通知层 */}
       <PartyBulletStream active={mode==='party'}/>
+
+      {coinBurst && <div className={`coin-burst coin-burst-${coinBurst.source}`} key={coinBurst.id}>
+        <div className="coin-burst-token">🪙</div>
+        <span>{coinBurst.label}</span>
+      </div>}
+
+      {partyChoiceOpen && <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#594A3C]/45 p-4 backdrop-blur-sm">
+        <div className="w-full max-w-3xl rounded-[2rem] border-4 border-white bg-[#FFF7E8] p-6 shadow-2xl">
+          <h2 className="text-center text-3xl font-black">进入下一层前，选择一个奖励</h2>
+          <p className="mt-2 text-center text-sm font-bold text-[#7A6958]">当前为占位奖励，后续可扩展为更多能力与内容。</p>
+          <div className="mt-6 grid gap-3 md:grid-cols-3">
+            {partyChoices.map(choice=><button key={choice.id} onClick={()=>choosePartyReward(choice)} className="rounded-3xl border-2 border-[#F7C948]/35 bg-white p-5 text-left shadow transition hover:-translate-y-1 hover:shadow-lg">
+              <div className="text-3xl">🪙</div>
+              <h3 className="mt-3 text-xl font-black">{choice.title}</h3>
+              <p className="mt-2 text-sm font-bold text-[#7A6958]">{choice.detail}</p>
+            </button>)}
+          </div>
+        </div>
+      </div>}
 
       {/* 派对模式 · 进入下一层过场 */}
       {layerTransition.show && <div className="layer-transition" key={layerTransition.layer}>
@@ -2210,7 +2510,7 @@ function HappyStickerBookGameInner({account,onAccountChange}:{account:Account;on
       {failOpen && <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#594A3C]/55 p-4 backdrop-blur-sm">
         <div className="w-full max-w-md rounded-[2rem] border-4 border-white bg-[#FFF7E8] p-6 text-center shadow-2xl">
           <h2 className="text-3xl font-black text-[#FF7E93]">挑战失败</h2>
-          <p className="mt-2 font-bold">第 {partyLayer} 层未在限定回合内完成全部订单。</p>
+          <p className="mt-2 font-bold">第 {partyLayer} 层未在限定贴纸数内达到目标总分。</p>
           <p className="mt-1 text-sm font-bold text-[#7A6958]">本次最高到达：第 {partyLayer} 层</p>
           <div className="mt-5 grid grid-cols-2 gap-3">
             <button onClick={partyExit} className="rounded-2xl bg-white py-3 font-black shadow">回到主界面</button>

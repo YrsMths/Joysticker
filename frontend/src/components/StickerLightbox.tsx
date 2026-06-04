@@ -1,5 +1,7 @@
 import { useEffect } from 'react';
 import { X } from 'lucide-react';
+import type { StickerFinishKey, StickerMaterialKey } from '@/game/data/stickerVariants';
+import { getStickerVariantDecoClasses } from '@/game/data/stickerVariantVisuals';
 
 // 日记图鉴贴纸放大预览
 // 整屏高斯模糊 + 半透明暗罩；贴纸图本体居中悬浮、保持透明 PNG；
@@ -9,14 +11,11 @@ import { X } from 'lucide-react';
 // 与小图保持一致 —— 复用全局 .shape-deco-* / .shape-finish-* 视觉样式，
 // 在 <img> 之上叠加同样的装饰层。
 
-type MaterialKey = '普通' | '镭射' | '布料' | '磨砂' | '水晶贴' | '泡泡贴' | '烫金';
-type FinishKey = '普通' | '金色闪粉' | '彩色闪粉' | '动态贴纸' | '荧光贴纸';
-
 type Props = {
   src: string | null;
   alt?: string;
-  material?: MaterialKey;
-  finish?: FinishKey;
+  material?: StickerMaterialKey;
+  finish?: StickerFinishKey;
   stickerId?: string | null;
   onClose: () => void;
 };
@@ -37,20 +36,7 @@ export default function StickerLightbox({ src, alt, material, finish, stickerId,
   if (!src) return null;
 
   // 与棋盘贴纸 / 候选卡 / 日记贴纸盒保持一致的装饰类映射
-  const decoMatClass =
-    material === '镭射' ? 'shape-deco shape-deco-holo'
-    : material === '布料' ? 'shape-deco shape-deco-fabric'
-    : material === '磨砂' ? 'shape-deco shape-deco-frosted'
-    : material === '水晶贴' ? 'shape-deco shape-deco-crystal'
-    : material === '泡泡贴' ? 'shape-deco shape-deco-bubble'
-    : material === '烫金' ? 'shape-deco shape-deco-gold'
-    : '';
-  const decoFinClass =
-    finish === '金色闪粉' ? 'shape-finish shape-finish-gold'
-    : finish === '彩色闪粉' ? 'shape-finish shape-finish-confetti'
-    : finish === '动态贴纸' ? 'shape-finish shape-finish-dynamic'
-    : finish === '荧光贴纸' ? 'shape-finish shape-finish-glow'
-    : '';
+  const { materialClass: decoMatClass, finishClass: decoFinClass } = getStickerVariantDecoClasses(material, finish);
   const animationFrames = stickerId === 'starry_star' ? STAR_DYNAMIC_FRAMES : null;
 
   return (

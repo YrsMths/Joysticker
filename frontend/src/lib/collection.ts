@@ -1,14 +1,19 @@
 // 贴纸图鉴 / 解锁系统
 // 每个 unlock entry 对应一个 (stickerId, material, finish) 组合，是否已解锁。
-// 通用材质 / 外观（与 Index.tsx 中 MATERIALS / FINISHES 对应），但图鉴里只取一部分有趣组合即可。
 
-export type MaterialKey = '普通'|'镭射'|'布料'|'磨砂'|'水晶贴'|'泡泡贴'|'烫金';
-export type FinishKey = '普通'|'金色闪粉'|'彩色闪粉'|'动态贴纸'|'荧光贴纸';
+import {
+  CODEX_MATERIAL_KEYS,
+  CODEX_FINISH_KEYS,
+  type CodexFinishKey,
+  type CodexMaterialKey,
+} from '@/game/data/stickerVariants';
+
+export type MaterialKey = CodexMaterialKey;
+export type FinishKey = CodexFinishKey;
 export type StickerUnlockTarget = { id: string; material: MaterialKey; finish: FinishKey };
 
-// 图鉴里展示的 materials × finishes（4 × 3 矩阵，每张贴纸 12 个版本）
-export const CODEX_MATERIALS: MaterialKey[] = ['普通','镭射','水晶贴','烫金'];
-export const CODEX_FINISHES: FinishKey[]   = ['普通','金色闪粉','荧光贴纸'];
+export const CODEX_MATERIALS: MaterialKey[] = [...CODEX_MATERIAL_KEYS];
+export const CODEX_FINISHES: FinishKey[] = [...CODEX_FINISH_KEYS];
 
 // 全部 18 张贴纸 ID（与 Index.tsx 中的 S 列表 id 保持一致）
 export const ALL_STICKER_IDS = [
