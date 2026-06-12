@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { BookOpen, Box, Eraser, Gift, Layers, Lock, PackageOpen, PartyPopper, PenLine, RefreshCw, RotateCw, ShoppingBag, Sparkles, Star, Trash2, Trophy, Type, X } from 'lucide-react';
+import { BookOpen, Box, CloudRain, Coins, Eraser, Gift, Layers, Lock, PackageOpen, PartyPopper, PenLine, RefreshCw, RotateCw, ShoppingBag, Sparkles, Star, Sun, Trash2, Trophy, Trees, Type, UtensilsCrossed, X, Zap } from 'lucide-react';
 import {
   CODEX_MATERIALS, CODEX_FINISHES, ALL_STICKER_IDS,
   encodeUnlockKey, isUnlocked, countStickerUnlocks, rollDrop,
@@ -117,6 +117,7 @@ const AUDIO_ASSETS = {
 } as const;
 type CoinBurst = { id:string; source:'score'|'party-choice'; amount:number; label:string };
 type PartyChoiceOption = { id:string; title:string; detail:string; coinReward:number; weatherKey?:PartyWeatherKey; sceneKey?:PartySceneKey };
+type PartyChoiceVisual = { badge:string; itemName:string; icon:JSX.Element; toneClass:string };
 type BoardScorePopup = {
   id:string;
   row:number;
@@ -1280,6 +1281,19 @@ function partyChoiceOptions(layer:number, weather:PartyWeatherState, scene:Party
     return { id:`party-choice-${layer}-${index}-scene-${sceneOffer}`, title:'场景补给', detail:sceneOffer===scene.key ? `升级场景（当前 ${scene.key} Lv.${scene.level}）` : `切换为 ${sceneOffer}（Lv.1）`, coinReward:0, sceneKey: sceneOffer } satisfies PartyChoiceOption;
   });
   return rewards;
+}
+function getPartyChoiceVisual(choice:PartyChoiceOption):PartyChoiceVisual{
+  if(choice.weatherKey){
+    if(choice.weatherKey==='晴朗') return { badge:'天气补给', itemName:'晴朗', icon:<Sun className="h-8 w-8"/>, toneClass:'party-choice-card-weather-sun' };
+    if(choice.weatherKey==='雨') return { badge:'天气补给', itemName:'雨', icon:<CloudRain className="h-8 w-8"/>, toneClass:'party-choice-card-weather-rain' };
+    return { badge:'天气补给', itemName:'雷', icon:<Zap className="h-8 w-8"/>, toneClass:'party-choice-card-weather-thunder' };
+  }
+  if(choice.sceneKey){
+    if(choice.sceneKey==='动物园') return { badge:'场景补给', itemName:'动物园', icon:<Trees className="h-8 w-8"/>, toneClass:'party-choice-card-scene-zoo' };
+    if(choice.sceneKey==='美食街') return { badge:'场景补给', itemName:'美食街', icon:<UtensilsCrossed className="h-8 w-8"/>, toneClass:'party-choice-card-scene-food' };
+    return { badge:'场景补给', itemName:'游乐场', icon:<PartyPopper className="h-8 w-8"/>, toneClass:'party-choice-card-scene-playground' };
+  }
+  return { badge:'口袋补给', itemName:`${choice.coinReward} 枚硬币`, icon:<Coins className="h-8 w-8"/>, toneClass:'party-choice-card-coins' };
 }
 
 export default function HappyStickerBookGame(){
@@ -2761,11 +2775,22 @@ function HappyStickerBookGameInner({account,onAccountChange}:{account:Account;on
           <h2 className="text-center text-3xl font-black">进入下一层前，选择一个奖励</h2>
           <p className="mt-2 text-center text-sm font-bold text-[#7A6958]">当前为占位奖励，后续可扩展为更多能力与内容。</p>
           <div className="mt-6 grid gap-3 md:grid-cols-3">
-            {partyChoices.map(choice=><button key={choice.id} onClick={()=>{ playUiConfirm(); choosePartyReward(choice); }} className="rounded-3xl border-2 border-[#F7C948]/35 bg-white p-5 text-left shadow transition hover:-translate-y-1 hover:shadow-lg">
-              <div className="text-3xl">🪙</div>
-              <h3 className="mt-3 text-xl font-black">{choice.title}</h3>
-              <p className="mt-2 text-sm font-bold text-[#7A6958]">{choice.detail}</p>
-            </button>)}
+            {partyChoices.map(choice=>{
+              const visual = getPartyChoiceVisual(choice);
+              return <button key={choice.id} onClick={()=>{ playUiConfirm(); choosePartyReward(choice); }} className={`party-choice-card ${visual.toneClass}`}>
+                <div className="party-choice-card-top">
+                  <span className="party-choice-card-badge">{visual.badge}</span>
+                  <span className="party-choice-card-title">{choice.title}</span>
+                </div>
+                <div className="party-choice-card-main">
+                  <div className="party-choice-card-icon">{visual.icon}</div>
+                  <div className="party-choice-card-copy">
+                    <strong className="party-choice-card-item">{visual.itemName}</strong>
+                    <p className="party-choice-card-detail">{choice.detail}</p>
+                  </div>
+                </div>
+              </button>;
+            })}
           </div>
         </div>
       </div>}
