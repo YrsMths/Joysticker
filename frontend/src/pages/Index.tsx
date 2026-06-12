@@ -59,8 +59,64 @@ type AdjacentVariantUpgradeRule = VariantRuleBase & {
 type VariantUpgradeRule = CombinationVariantUpgradeRule | AdjacentVariantUpgradeRule;
 const withBase = (path:string)=>`${import.meta.env.BASE_URL}${path.replace(/^\//,'')}`;
 const STAR_DYNAMIC_FRAMES = Array.from({length:33},(_,i)=>withBase(`assets/images/stickers/fantasy/sticker-star-dynamic/${i+1}.png`));
+const WEATHER_FRAMES: Record<PartyWeatherKey,string[]> = {
+  晴朗: Array.from({length:25},(_,i)=>withBase(`assets/images/weather/sun/sun_${i}.png`)),
+  雨: Array.from({length:25},(_,i)=>withBase(`assets/images/weather/rain/rain_${i}.png`)),
+  雷: Array.from({length:25},(_,i)=>withBase(`assets/images/weather/thunder/thunder_${i}.png`)),
+};
+const SCENE_FRAMES: Record<PartySceneKey,string[]> = {
+  动物园: Array.from({length:30},(_,i)=>withBase(`assets/images/scene/zoo/${i}.png`)),
+  游乐场: Array.from({length:25},(_,i)=>withBase(`assets/images/scene/playground/${i}.png`)),
+  美食街: Array.from({length:30},(_,i)=>withBase(`assets/images/scene/foodstreet/${i}.png`)),
+};
+const PARTY_WEATHER_LABELS: Record<PartyWeatherKey,string> = {
+  晴朗: '折射',
+  雨: '湿润 / 亲水',
+  雷: '连携',
+};
+const PARTY_SCENE_LABELS: Record<PartySceneKey,string> = {
+  动物园: '动物伙伴共游',
+  游乐场: '游乐热闹共鸣',
+  美食街: '烟火小吃派对',
+};
+const PARTY_WEATHER_DESCRIPTIONS: Record<PartyWeatherKey,(level:PartyModifierLevel)=>string> = {
+  晴朗: (level)=>`晴朗·折射：水晶贴贴入时，重触发${level===1?'随机 1 个':level===2?'随机 3 个':'全部'}其他水晶贴得分`,
+  雨: (level)=>`雨·湿润 / 亲水：纸箱失效；泡泡贴贴入时得分膨胀 ×${level===1?1.5:level===2?2:3}`,
+  雷: (level)=>`雷·连携：镭射贴入时，外圈 ${level} 层格子各有 30% 概率触发得分`,
+};
+const PARTY_SCENE_DESCRIPTIONS: Record<PartySceneKey,(level:PartyModifierLevel)=>string> = {
+  动物园: (level)=>`动物园 Lv.${level}：动物类型贴纸基础加成 +${level===1?1:level===2?3:5}`,
+  游乐场: (level)=>`游乐场 Lv.${level}：节日类型贴纸基础加成 +${level===1?1:level===2?3:5}`,
+  美食街: (level)=>`美食街 Lv.${level}：食物类型贴纸基础加成 +${level===1?1:level===2?3:5}`,
+};
+const AUDIO_ASSETS = {
+  ui: {
+    click: withBase('assets/sounds/ui_button_click_soft.wav'),
+    confirm: withBase('assets/sounds/ui_button_confirm_warm.wav'),
+    back: withBase('assets/sounds/ui_button_back_soft.wav'),
+  },
+  bgm: {
+    home: withBase('assets/sounds/bgm_home_scrapbook_daydream_loop.wav'),
+    story: withBase('assets/sounds/bgm_story_cozy_diary_loop.wav'),
+    party: withBase('assets/sounds/bgm_party_playful_combo_loop.wav'),
+    diary: withBase('assets/sounds/bgm_diary_creative_gentle_loop.wav'),
+    shop: withBase('assets/sounds/bgm_shop_soft_boutique_loop.wav'),
+  },
+  material: {
+    普通: withBase('assets/sounds/material_place_normal_soft.wav'),
+    镭射: withBase('assets/sounds/material_place_holo_shine.wav'),
+    布料: withBase('assets/sounds/material_place_fabric_soft.wav'),
+    磨砂: withBase('assets/sounds/material_place_frosted_mute.wav'),
+    水晶贴: withBase('assets/sounds/material_place_crystal_glint.wav'),
+    泡泡贴: withBase('assets/sounds/material_place_bubble_soft_pop.wav'),
+    烫金: withBase('assets/sounds/material_place_gold_foil_glow.wav'),
+  },
+  score: {
+    base: withBase('assets/sounds/score_base_tick.wav'),
+  },
+} as const;
 type CoinBurst = { id:string; source:'score'|'party-choice'; amount:number; label:string };
-type PartyChoiceOption = { id:string; title:string; detail:string; coinReward:number };
+type PartyChoiceOption = { id:string; title:string; detail:string; coinReward:number; weatherKey?:PartyWeatherKey; sceneKey?:PartySceneKey };
 type BoardScorePopup = {
   id:string;
   row:number;
@@ -72,6 +128,17 @@ type BoardScorePopup = {
   dx:number;
   dy:number;
   delay:number;
+};
+type PartyWeatherKey = '晴朗'|'雨'|'雷';
+type PartySceneKey = '动物园'|'游乐场'|'美食街';
+type PartyModifierLevel = 1|2|3;
+type PartyWeatherState = {
+  key: PartyWeatherKey;
+  level: PartyModifierLevel;
+};
+type PartySceneState = {
+  key: PartySceneKey;
+  level: PartyModifierLevel;
 };
 const SHAPES: Record<string, Shape> = {
   '1x1':       [[0,0]],
@@ -534,7 +601,7 @@ function Home({progress,onEnter,account,onAccountChange}:any){
   return <section className="relative flex flex-1 flex-col justify-center py-8">
     <div className="absolute right-0 top-0 flex items-center gap-3">
       <div className="rounded-full bg-white/80 px-4 py-2 text-sm font-black shadow">⭐ 星星 {progress.starBalance || 0}</div>
-      <button onClick={()=>onEnter('shop')} className="inline-flex items-center gap-2 rounded-full bg-[#FFF7E8] px-4 py-2 text-sm font-black text-[#594A3C] shadow transition hover:-translate-y-0.5 hover:shadow-md">
+      <button onClick={()=>{ onEnter('shop'); }} className="inline-flex items-center gap-2 rounded-full bg-[#FFF7E8] px-4 py-2 text-sm font-black text-[#594A3C] shadow transition hover:-translate-y-0.5 hover:shadow-md">
         <ShoppingBag className="h-4 w-4"/>商店
       </button>
     </div>
@@ -1175,13 +1242,44 @@ function variantAnimationFrames(stickerId:string):string[]|undefined{
   if(stickerId==='starry_star') return STAR_DYNAMIC_FRAMES;
   return undefined;
 }
-function partyChoiceOptions(layer:number):PartyChoiceOption[]{
-  return Array.from({length:3},(_,i)=>({
-    id:`party-choice-${layer}-${i}`,
-    title:`口袋补给 ${i+1}`,
-    detail:'获得 3 枚硬币',
-    coinReward:3,
-  }));
+function createPartyWeather(layer:number):PartyWeatherState{
+  const keys: PartyWeatherKey[] = ['晴朗','雨','雷'];
+  return {
+    key: keys[(layer - 1) % keys.length],
+    level: Math.min(3, Math.max(1, Math.floor((layer - 1) / 2) + 1)) as PartyModifierLevel,
+  };
+}
+function createPartyScene(layer:number):PartySceneState{
+  const keys: PartySceneKey[] = ['动物园','游乐场','美食街'];
+  return {
+    key: keys[(layer - 1) % keys.length],
+    level: Math.min(3, Math.max(1, Math.floor((layer - 1) / 3) + 1)) as PartyModifierLevel,
+  };
+}
+function rollPartyWeather(seed:number):PartyWeatherKey{
+  const keys: PartyWeatherKey[] = ['晴朗','雨','雷'];
+  return keys[Math.abs(seed) % keys.length];
+}
+function rollPartyScene(seed:number):PartySceneKey{
+  const keys: PartySceneKey[] = ['动物园','游乐场','美食街'];
+  return keys[Math.abs(seed * 3 + 7) % keys.length];
+}
+function partyChoiceOptions(layer:number, weather:PartyWeatherState, scene:PartySceneState):PartyChoiceOption[]{
+  const weatherKeys: PartyWeatherKey[] = ['晴朗','雨','雷'];
+  const sceneKeys: PartySceneKey[] = ['动物园','游乐场','美食街'];
+  const rewards = Array.from({length:3},(_,index)=>{
+    const rewardType = ['coins','weather','scene'][Math.abs(layer * 23 + index * 17 + weather.level * 5 + scene.level * 7 + Date.now()) % 3] as 'coins'|'weather'|'scene';
+    if(rewardType==='coins'){
+      return { id:`party-choice-${layer}-${index}-coins`, title:'口袋补给', detail:'获得 3 枚硬币', coinReward:3 } satisfies PartyChoiceOption;
+    }
+    if(rewardType==='weather'){
+      const weatherOffer = weatherKeys[Math.abs(layer * 29 + index * 13 + Date.now()) % weatherKeys.length];
+      return { id:`party-choice-${layer}-${index}-weather-${weatherOffer}`, title:'天气补给', detail:weatherOffer===weather.key ? `升级天气（当前 ${weather.key} Lv.${weather.level}）` : `切换为 ${weatherOffer}（Lv.1）`, coinReward:0, weatherKey: weatherOffer } satisfies PartyChoiceOption;
+    }
+    const sceneOffer = sceneKeys[Math.abs(layer * 31 + index * 19 + Date.now()) % sceneKeys.length];
+    return { id:`party-choice-${layer}-${index}-scene-${sceneOffer}`, title:'场景补给', detail:sceneOffer===scene.key ? `升级场景（当前 ${scene.key} Lv.${scene.level}）` : `切换为 ${sceneOffer}（Lv.1）`, coinReward:0, sceneKey: sceneOffer } satisfies PartyChoiceOption;
+  });
+  return rewards;
 }
 
 export default function HappyStickerBookGame(){
@@ -1202,6 +1300,8 @@ function HappyStickerBookGameInner({account,onAccountChange}:{account:Account;on
   // 派对模式：当前层数 (>=1) + 自动生成的关卡。levelIndex 在派对模式下不使用，使用 partyLayer 与 partyLevel 代替。
   const [partyLayer,setPartyLayer] = useState(1);
   const [partyLevel,setPartyLevel] = useState<PartyLevel>(()=>generatePartyLevel(1));
+  const [partyWeather,setPartyWeather] = useState<PartyWeatherState>(()=>createPartyWeather(1));
+  const [partyScene,setPartyScene] = useState<PartySceneState>(()=>createPartyScene(1));
   const [layerTransition,setLayerTransition] = useState<{show:boolean;layer:number}>({show:false,layer:1});
   const [failOpen,setFailOpen] = useState(false);
   const [dropToast,setDropToast] = useState<{id:string;name:string;material:string;finish:string;asset:string}|null>(null);
@@ -1244,12 +1344,69 @@ function HappyStickerBookGameInner({account,onAccountChange}:{account:Account;on
   const [floatLogs,setFloatLogs] = useState<{id:string;txt:string;kind:'base'|'pattern'|'special'}[]>([]);
   const [coinBurst,setCoinBurst] = useState<CoinBurst|null>(null);
   const [boardScorePopups,setBoardScorePopups] = useState<BoardScorePopup[]>([]);
+  const bgmRef = useRef<HTMLAudioElement | null>(null);
+  const [partySceneFrameIndex,setPartySceneFrameIndex] = useState(0);
 
   const selected = candidates[selectedIndex] || candidates[0];
   const total = baseScore * Math.max(1,patternScore) * Math.max(1,specialScore);
   const stars = Math.max(1,Math.min(3,Math.ceil(total/Math.max(1,level.star))));
   const storyStarProgress = mode==='story' ? Math.max(0, Math.min(1, total / Math.max(1, level.star * 3))) : 0;
   const collectedStoryStars = Math.max(0, Math.min(3, Number((progress.storyStars || {})[level?.key] || 0)));
+  const isRainWeather = mode==='party' && partyWeather.key==='雨';
+  const weatherCrateDisabled = isRainWeather;
+  const weatherBubbleMultiplier = mode==='party' && partyWeather.key==='雨' && selected?.kind==='sticker' && selected.material==='泡泡贴'
+    ? ([1, 1.5, 2, 3] as const)[partyWeather.level]
+    : 1;
+  const partyWeatherFrames = WEATHER_FRAMES[partyWeather.key];
+  const partyWeatherDescription = PARTY_WEATHER_DESCRIPTIONS[partyWeather.key](partyWeather.level);
+  const partySceneFrames = SCENE_FRAMES[partyScene.key];
+  const partySceneDescription = PARTY_SCENE_DESCRIPTIONS[partyScene.key](partyScene.level);
+  const playAudio = (src:string, volume=1)=>{
+    const audio = new Audio(src);
+    audio.volume = volume;
+    void audio.play().catch(()=>undefined);
+  };
+  const playUiClick = ()=>playAudio(AUDIO_ASSETS.ui.click, 0.55);
+  const playUiConfirm = ()=>playAudio(AUDIO_ASSETS.ui.confirm, 0.6);
+  const playUiBack = ()=>playAudio(AUDIO_ASSETS.ui.back, 0.5);
+  const playMaterialSound = (material:StickerMaterialKey)=>playAudio(AUDIO_ASSETS.material[material], 0.35);
+  const playBaseScoreSound = ()=>playAudio(AUDIO_ASSETS.score.base, 0.4);
+
+  useEffect(()=>{
+    const src = mode==='home' ? AUDIO_ASSETS.bgm.home
+      : mode==='storyMenu' || mode==='story' ? AUDIO_ASSETS.bgm.story
+      : mode==='party' ? AUDIO_ASSETS.bgm.party
+      : mode==='diary' ? AUDIO_ASSETS.bgm.diary
+      : mode==='shop' ? AUDIO_ASSETS.bgm.shop
+      : null;
+    if(!src) return;
+    if(bgmRef.current){
+      bgmRef.current.pause();
+      bgmRef.current = null;
+    }
+    const audio = new Audio(src);
+    audio.loop = true;
+    audio.volume = 0.34;
+    bgmRef.current = audio;
+    void audio.play().catch(()=>undefined);
+    return ()=>{
+      audio.pause();
+      if(bgmRef.current===audio) bgmRef.current = null;
+    };
+  },[mode]);
+
+  useEffect(()=>{
+    setPartySceneFrameIndex(0);
+  },[partyScene.key]);
+
+  useEffect(()=>{
+    if(mode!=='party') return;
+    if(!partySceneFrames.length) return;
+    const timer = window.setInterval(()=>{
+      setPartySceneFrameIndex(cur=>(cur + 1) % partySceneFrames.length);
+    }, 66);
+    return ()=>window.clearInterval(timer);
+  },[mode, partySceneFrames]);
 
   useEffect(()=>acctSetItem(KEY,JSON.stringify(progress)),[progress]);
   useEffect(()=>saveUnlocks(unlocks),[unlocks]);
@@ -1376,14 +1533,14 @@ function HappyStickerBookGameInner({account,onAccountChange}:{account:Account;on
   },[mode, candidates]);
 
   // 设置一关：剧情模式按 idx 取 L；派对模式按 partyLayer 取 partyLevel
-  const setupLevel = (n:any, isParty:boolean, layerNum?:number)=>{
+  const setupLevel = (n:any, isParty:boolean, layerNum?:number, options?:{ keepCoins?: boolean })=>{
     setBoard(boardOf(n));
     setPlaced([]);
     const seedBase = isParty ? (layerNum||1)*7 : ((typeof n.key==='string'?n.key.length:0)*10);
     setCandidates([cand(n,seedBase+1),cand(n,seedBase+2),cand(n,seedBase+3)]);
     setSelectedIndex(0);
     setBaseScore(0); setPatternScore(1); setSpecialScore(1);
-    setTurn(1); setCoins(3); setScoreCoinMilestone(0);
+    setTurn(1); if(!options?.keepCoins) setCoins(3); setScoreCoinMilestone(0);
     setOrders(n.orders.map(([kind,label,target]:any)=>({kind,label,target,progress:0})));
     setLogs([]);
     setMessage(isParty?`第 ${layerNum} 层：${n.goal}`:`${n.key} ${n.name}：${n.goal}`);
@@ -1401,14 +1558,17 @@ function HappyStickerBookGameInner({account,onAccountChange}:{account:Account;on
       const purchases = cur.shopPurchases || [];
       if(purchases.includes(item.id)){
         setMessage(`${item.name} 已购买。`);
+        playUiClick();
         return cur;
       }
       const balance = Number(cur.starBalance || 0);
       if(balance < item.price){
         setMessage(`星星不足，购买 ${item.name} 需要 ${item.price} 颗星星。`);
+        playUiClick();
         return cur;
       }
       setMessage(`已购买 ${item.name}，后续可在这里扩充更多关外内容。`);
+      playUiConfirm();
       return {
         ...cur,
         starBalance: balance - item.price,
@@ -1421,8 +1581,12 @@ function HappyStickerBookGameInner({account,onAccountChange}:{account:Account;on
     if(nextMode==='party'){
       const layerNum = 1;
       const pl = generatePartyLevel(layerNum);
+      const nextWeather = { key: rollPartyWeather(Date.now()), level: 1 as PartyModifierLevel };
+      const nextScene = { key: rollPartyScene(Date.now()), level: 1 as PartyModifierLevel };
       setPartyLayer(layerNum);
       setPartyLevel(pl);
+      setPartyWeather(nextWeather);
+      setPartyScene(nextScene);
       setupLevel(pl, true, layerNum);
       return;
     }
@@ -1434,20 +1598,28 @@ function HappyStickerBookGameInner({account,onAccountChange}:{account:Account;on
   // 派对模式：进入下一层
   const advancePartyLayer = ()=>{
     const next = partyLayer + 1;
-    setPartyChoices(partyChoiceOptions(next));
+    setPartyChoices(partyChoiceOptions(next, partyWeather, partyScene));
     setPartyChoiceOpen(true);
   };
   const choosePartyReward = (choice:PartyChoiceOption)=>{
     const next = partyLayer + 1;
-    setCoins(v=>v + choice.coinReward);
-    setCoinBurst({ id:`party-choice-${Date.now()}`, source:'party-choice', amount:choice.coinReward, label:`+${choice.coinReward} 硬币` });
+    if(choice.coinReward>0){
+      setCoins(v=>v + choice.coinReward);
+      setCoinBurst({ id:`party-choice-${Date.now()}`, source:'party-choice', amount:choice.coinReward, label:`+${choice.coinReward} 硬币` });
+    }
+    if(choice.weatherKey){
+      setPartyWeather(cur=>choice.weatherKey===cur.key ? { ...cur, level: Math.min(3, cur.level + 1) as PartyModifierLevel } : { key: choice.weatherKey!, level: 1 });
+    }
+    if(choice.sceneKey){
+      setPartyScene(cur=>choice.sceneKey===cur.key ? { ...cur, level: Math.min(3, cur.level + 1) as PartyModifierLevel } : { key: choice.sceneKey!, level: 1 });
+    }
     setPartyChoiceOpen(false);
     setLayerTransition({show:true,layer:next});
     setTimeout(()=>{
       const pl = generatePartyLevel(next);
       setPartyLayer(next);
       setPartyLevel(pl);
-      setupLevel(pl, true, next);
+      setupLevel(pl, true, next, { keepCoins:true });
       setLayerTransition({show:false,layer:next});
     }, 720);
   };
@@ -1459,27 +1631,37 @@ function HappyStickerBookGameInner({account,onAccountChange}:{account:Account;on
     setFailOpen(false);
     reseedPartySession();
     const pl = generatePartyLevel(1);
+    const nextWeather = { key: rollPartyWeather(Date.now()+1), level: 1 as PartyModifierLevel };
+    const nextScene = { key: rollPartyScene(Date.now()+1), level: 1 as PartyModifierLevel };
     setPartyLayer(1);
     setPartyLevel(pl);
+    setPartyWeather(nextWeather);
+    setPartyScene(nextScene);
     setupLevel(pl, true, 1);
   };
   // 失败后：回到主界面
-  const partyExit = ()=>{ setFailOpen(false); setMode('home'); };
+  const partyExit = ()=>{ playUiBack(); setFailOpen(false); setMode('home'); };
 
   const enter = (m:Mode)=>{
     // 剧情模式入口：先进入关卡目录页，玩家自行选择关卡
-    if(m==='story'){ setMode('storyMenu'); return; }
+    if(m==='story'){ playUiConfirm(); setMode('storyMenu'); return; }
+    playUiConfirm();
     setMode(m);
     if(m==='party'){
       reseedPartySession();
       const pl = generatePartyLevel(1);
+      const nextWeather = { key: rollPartyWeather(Date.now()+2), level: 1 as PartyModifierLevel };
+      const nextScene = { key: rollPartyScene(Date.now()+2), level: 1 as PartyModifierLevel };
       setPartyLayer(1);
       setPartyLevel(pl);
+      setPartyWeather(nextWeather);
+      setPartyScene(nextScene);
       setupLevel(pl, true, 1);
     }
   };
   // 从剧情目录页选择某关进入游玩
   const enterStoryLevel = (idx:number)=>{
+    playUiConfirm();
     setMode('story');
     reset(idx,'story');
   };
@@ -1489,14 +1671,14 @@ function HappyStickerBookGameInner({account,onAccountChange}:{account:Account;on
     const cell = board[r]?.[c]; if(!cell) return false;
     if(tool.id==='sponge') return !!(cell.stickerId && !cell.sponge && !cell.stackId && cell.terrain!=='crate' && cell.terrain!=='masked');
     if(tool.id==='eraser') return cell.terrain==='stain';
-    if(tool.id==='scissors') return cell.terrain==='crate';
+    if(tool.id==='scissors') return cell.terrain==='crate' && !weatherCrateDisabled;
     return false;
   };
   const canSticker = (i:number,r:number,c:number)=>{
     const x = candidates[i]; if(!x||x.kind!=='sticker') return false;
     return rotShape(x.shape,x.rotation).every(([dr,dc])=>{
       const cell = board[r+dr]?.[c+dc];
-      return !!cell && cell.terrain!=='masked' && cell.terrain!=='crate' && (!cell.stickerId||(cell.sponge && !cell.stackId));
+      return !!cell && cell.terrain!=='masked' && (cell.terrain!=='crate' || weatherCrateDisabled) && (!cell.stickerId||(cell.sponge && !cell.stackId));
     });
   };
   const can = (i:number,r:number,c:number)=>candidates[i]?.kind==='tool'?canTool(candidates[i],r,c):canSticker(i,r,c);
@@ -1720,6 +1902,7 @@ function HappyStickerBookGameInner({account,onAccountChange}:{account:Account;on
   const applyTool = (i:number,r:number,c:number)=>{
     const x = candidates[i];
     if(!canTool(x,r,c)){ setMessage('这个道具不能用在这里，请看绿色可用提示。'); return; }
+    playUiConfirm();
     const n = board.map(line=>line.map(cell=>({...cell})));
     const cell = n[r][c];
     if(x.id==='sponge'){ cell.sponge = true; updateOrder('sponge',1); setMessage('海绵胶已贴好：这个格子可以继续叠贴。'); }
@@ -1807,10 +1990,13 @@ function HappyStickerBookGameInner({account,onAccountChange}:{account:Account;on
     const x = candidates[i]; if(!x) return;
     if(x.kind==='tool'){ applyTool(i,r,c); return; }
     if(!canSticker(i,r,c)){ setMessage('这里贴不下哦，红色提示表示不可放置。'); return; }
+    playUiConfirm();
 
     const cells = rotShape(x.shape,x.rotation);
     const n = board.map(line=>line.map(cell=>({...cell})));
     let bg = 0, hi = 0, stack = false, fogReveal = 0, stableHits = 0, stainAdj = 0;
+    const detailLines:string[] = [];
+    const specialPopupEntries:{ value:number; label:string }[] = [];
 
     // 邻位污渍计数
     const dirs = [[1,0],[-1,0],[0,1],[0,-1]];
@@ -1836,6 +2022,18 @@ function HappyStickerBookGameInner({account,onAccountChange}:{account:Account;on
       }
       if(isStack) cell.stackId = x.instanceId; else cell.stickerId = x.instanceId;
     });
+
+    if(mode==='party'){
+      const sceneBonus = partyScene.level===1 ? 1 : partyScene.level===2 ? 3 : 5;
+      const sceneMatch = (partyScene.key==='游乐场' && x.type==='节日')
+        || (partyScene.key==='美食街' && x.type==='食物')
+        || (partyScene.key==='动物园' && x.type==='动物');
+      if(sceneMatch){
+        bg += sceneBonus;
+        detailLines.push(`${partyScene.key}基础加成 +${sceneBonus}`);
+        specialPopupEntries.push({ value:sceneBonus, label:partyScene.key });
+      }
+    }
 
     // 荧光贴纸：邻接 4 向揭示
     let F = 0;
@@ -1896,8 +2094,6 @@ function HappyStickerBookGameInner({account,onAccountChange}:{account:Account;on
 
     // 计算材质分
     let sg = 0;
-    const detailLines:string[] = [];
-    const specialPopupEntries:{ value:number; label:string }[] = [];
 
     // 布料：每贴 +1 蓄积；满 3 层兑现 +5
     let nextFabricStack = fabricStack;
@@ -1934,6 +2130,61 @@ function HappyStickerBookGameInner({account,onAccountChange}:{account:Account;on
       specialPopupEntries.push({ value:finRes.score, label:FINISHES[activeSticker.finish as FinishKey].label });
     }
 
+    const weatherDetails:string[] = [];
+    const weatherPopupEntries:{ value:number; label:string }[] = [];
+
+    if(mode==='party' && partyWeather.key==='晴朗' && activeSticker.material==='水晶贴'){
+      const crystalTargets = placedAfter.filter(item=>item.instanceId!==activeSticker.instanceId && item.material==='水晶贴');
+      let reboundTargets = crystalTargets;
+      if(partyWeather.level===1) reboundTargets = crystalTargets.slice(0,1);
+      if(partyWeather.level===2) reboundTargets = crystalTargets.slice(0,3);
+      const reboundScore = reboundTargets.reduce((sum,item)=>sum + item.cells.reduce((cellSum:number,[dr,dc]:number[])=>cellSum + Math.max(0, n[item.row+dr]?.[item.col+dc]?.base || 0),0), 0);
+      if(reboundScore>0){
+        sg += reboundScore;
+        weatherDetails.push(`晴朗折射 +${reboundScore}（重触发 ${reboundTargets.length} 个水晶贴）`);
+        weatherPopupEntries.push({ value:reboundScore, label:'折射' });
+      }
+    }
+
+    if(mode==='party' && partyWeather.key==='雷' && activeSticker.material==='镭射'){
+      const radius = partyWeather.level;
+      let chainScore = 0;
+      for(let rr=Math.max(0, activeRow-radius); rr<=Math.min(ROWS-1, activeRow+radius+activeCells.length); rr++){
+        for(let cc=Math.max(0, activeCol-radius); cc<=Math.min(COLS-1, activeCol+radius+activeCells.length); cc++){
+          const inOwn = activeCells.some(([dr,dc])=>activeRow+dr===rr && activeCol+dc===cc);
+          if(inOwn) continue;
+          if(Math.abs((rr-activeRow))>radius && Math.abs((cc-activeCol))>radius) continue;
+          const rollSeed = Math.abs((turn+1)*97 + rr*31 + cc*17 + partyLayer*13) % 100;
+          if(rollSeed < 30){
+            chainScore += Math.max(0, n[rr]?.[cc]?.base || 0);
+          }
+        }
+      }
+      if(chainScore>0){
+        sg += chainScore;
+        weatherDetails.push(`雷鸣连携 +${chainScore}（外圈 ${partyWeather.level} 层触发）`);
+        weatherPopupEntries.push({ value:chainScore, label:'连携' });
+      }
+    }
+
+    if(mode==='party' && partyWeather.key==='雨' && activeSticker.material==='泡泡贴' && sg + bg + pg > 0){
+      const rainMultiplier = partyWeather.level===1 ? 1.5 : partyWeather.level===2 ? 2 : 3;
+      const boostedBase = Math.max(0, Math.round(bg * (rainMultiplier - 1)));
+      const boostedPattern = Math.max(0, Math.round(pg * (rainMultiplier - 1)));
+      const boostedSpecial = Math.max(0, Math.round(sg * (rainMultiplier - 1)));
+      bg += boostedBase;
+      pg += boostedPattern;
+      sg += boostedSpecial;
+      const boostedTotal = boostedBase + boostedPattern + boostedSpecial;
+      if(boostedTotal>0){
+        weatherDetails.push(`雨幕亲水 +${boostedTotal}（×${rainMultiplier}）`);
+        weatherPopupEntries.push({ value:boostedTotal, label:'亲水' });
+      }
+    }
+
+    weatherDetails.forEach(detail=>detailLines.push(detail));
+    weatherPopupEntries.forEach(entry=>specialPopupEntries.push(entry));
+
     const nb = baseScore + bg;
     const np = patternScore + pg;
     const ns = specialScore + sg;
@@ -1958,6 +2209,8 @@ function HappyStickerBookGameInner({account,onAccountChange}:{account:Account;on
     if(bg>0) pushFloat(`基础分 +${bg}`, 'base');
     if(pg>0) pushFloat(`构型分 +${pg}`, 'pattern');
     if(sg>0) pushFloat(`材质特效分 +${sg}`, 'special');
+    playMaterialSound(activeSticker.material as StickerMaterialKey);
+    if(bg>0) playBaseScoreSound();
     let popupStackIndex = 0;
     if(bg>0) pushBoardScorePopups(popupCells, bg, 'base', '基础', popupStackIndex++);
     if(pg>0) pushBoardScorePopups(popupCells, pg, 'pattern', '构型', popupStackIndex++);
@@ -2032,16 +2285,19 @@ function HappyStickerBookGameInner({account,onAccountChange}:{account:Account;on
 
   const rotate = ()=>{
     if(selected.kind!=='sticker'){ setMessage('功能道具不需要旋转。'); return; }
+    playUiClick();
     setCandidates(cur=>cur.map((x,i)=>i===selectedIndex && x.kind==='sticker'?{...x,rotation:(x.rotation+90)%360}:x));
     setMessage('贴纸已旋转，轮廓和棋盘预览已更新。');
   };
   const refresh = ()=>{
     if(coins<3){ setMessage('硬币不足，刷新需要 3 枚硬币。'); return; }
+    playUiClick();
     setCoins(v=>v-3);
     setCandidates([cand(level,total+31),cand(level,total+37),cand(level,total+41)]);
   };
   const recycle = ()=>{
     if(coins<5||!placed.length){ setMessage('回收需要 5 枚硬币，且棋盘上要有贴纸。'); return; }
+    playUiClick();
     const t = placed[placed.length-1];
     const n = board.map(line=>line.map(cell=>({...cell})));
     t.cells.forEach(([dr,dc]:number[])=>{
@@ -2072,7 +2328,7 @@ function HappyStickerBookGameInner({account,onAccountChange}:{account:Account;on
               className="account-sticker-pill"
             />
           )}
-          <button onClick={()=>setMode('home')} className="flex items-center gap-2 rounded-full bg-[#FFB7C5] px-4 py-2 font-black text-[#594A3C] shadow-md"><Sparkles className="h-5 w-5"/>开心贴贴账</button>
+          <button onClick={()=>{ playUiBack(); setMode('home'); }} className="flex items-center gap-2 rounded-full bg-[#FFB7C5] px-4 py-2 font-black text-[#594A3C] shadow-md"><Sparkles className="h-5 w-5"/>开心贴贴账</button>
         </div>
         <div className="hidden text-sm font-bold sm:block">7 材质 · 5 外观 · 15 拓扑 · 三乘区结算</div>
         <div className="flex items-center gap-3">
@@ -2087,15 +2343,36 @@ function HappyStickerBookGameInner({account,onAccountChange}:{account:Account;on
 
       {(mode==='story'||mode==='party') && <section className="grid flex-1 gap-4 py-4 lg:grid-cols-[1fr_540px]">
         <div className="min-w-0 rounded-[2.5rem] border-4 border-white bg-[#FFFDF7]/90 p-4 shadow-2xl">
-          <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <p className="text-sm font-black text-[#9B7D62]">{mode==='story'?`剧情模式 · 第 ${level.ch} 章`:`派对高分 · 轻肉鸽`}</p>
-              <h2 className="text-3xl font-black">{mode==='party'?`第 ${partyLayer} 层`:`${level.key} ${level.name}`}</h2>
+          {mode==='party' ? <div className="party-top-stage mb-3">
+            <div className="party-scene-stage-bg" aria-hidden="true">
+              <img className="party-scene-frame" src={partySceneFrames[partySceneFrameIndex]} alt="" draggable={false} />
             </div>
-            {/* 计分公式区：基础 × 构型 × 材质特效 = 总分。
-                四张卡片用 grid 等宽，三个运算符 (× × =) 作为独立 flex 元素夹在中间不占等宽列；
-                数值变化时 ScoreTile 内部用 nonce key 重启 .score-bump 动画。 */}
-            <div className="score-row">
+            <div className="party-top-stage-foreground">
+              <div className="party-top-stage-header">
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-black text-[#9B7D62]">派对高分 · 轻肉鸽</p>
+                  <h2 className="text-3xl font-black">第 {partyLayer} 层</h2>
+                </div>
+                <div className="party-weather-header-animation" aria-hidden="true">
+                  {partyWeatherFrames.map((frame,index)=><img key={`header-${partyWeather.key}-${frame}-${index}`} className="party-weather-frame" src={frame} alt="" draggable={false} style={{ animationDelay: `-${(index / partyWeatherFrames.length) * 1.2}s` }} />)}
+                </div>
+              </div>
+              <div className="score-row party-score-row">
+                <ScoreTile label="基础" value={baseScore} variant="base"/>
+                <span className="score-op" aria-hidden="true">×</span>
+                <ScoreTile label="构型" value={patternScore} variant="pattern"/>
+                <span className="score-op" aria-hidden="true">×</span>
+                <ScoreTile label="材质特效" value={specialScore} variant="special"/>
+                <span className="score-op score-op-eq" aria-hidden="true">=</span>
+                <ScoreTile label="总分" value={total} variant="total"/>
+              </div>
+            </div>
+          </div> : <div className="story-top-stage mb-3">
+            <div className="min-w-0 story-top-stage-title">
+              <p className="text-sm font-black text-[#9B7D62]">{`剧情模式 · 第 ${level.ch} 章`}</p>
+              <h2 className="text-3xl font-black">{`${level.key} ${level.name}`}</h2>
+            </div>
+            <div className="score-row story-score-row">
               <ScoreTile label="基础" value={baseScore} variant="base"/>
               <span className="score-op" aria-hidden="true">×</span>
               <ScoreTile label="构型" value={patternScore} variant="pattern"/>
@@ -2104,7 +2381,7 @@ function HappyStickerBookGameInner({account,onAccountChange}:{account:Account;on
               <span className="score-op score-op-eq" aria-hidden="true">=</span>
               <ScoreTile label="总分" value={total} variant="total"/>
             </div>
-          </div>
+          </div>}
 
           <div className={`board-frame chapter-${level.ch}`}>
             <div className="game-board-wrap">
@@ -2234,11 +2511,6 @@ function HappyStickerBookGameInner({account,onAccountChange}:{account:Account;on
               </div>
             </div>
           </div>
-
-          {/* 浮字流：保留浮动加分提示，移除入场特效展示区 */}
-          <div className="float-log-tray mt-4">
-            {floatLogs.map(f=><span key={f.id} className={`float-log float-log-${f.kind}`}>{f.txt}</span>)}
-          </div>
         </div>
 
         {mode==='story' ? <aside className="space-y-4 rounded-[2.5rem] border-4 border-white bg-white/80 p-4 shadow-2xl">
@@ -2252,14 +2524,19 @@ function HappyStickerBookGameInner({account,onAccountChange}:{account:Account;on
               <h4 className="flex items-center gap-2 font-black"><Star className="h-5 w-5 text-[#F7C948]"/>关卡评星进度</h4>
               <span className="rounded-full bg-white px-3 py-1 text-xs font-black text-[#9B7D62]">已收集：{'★'.repeat(collectedStoryStars)}{'☆'.repeat(3-collectedStoryStars)}</span>
             </div>
-            <div className="grid grid-cols-3 gap-2 text-center text-xs font-black text-[#7A6958]">
-              {[1,2,3].map(count=><div key={count} className={`rounded-2xl px-3 py-2 ${stars>=count ? 'bg-[#FFF1B8] text-[#8D6200]' : 'bg-white/80 text-[#9B7D62]'}`}>
-                <div className="text-lg tracking-[0.2em]">{'★'.repeat(count)}{'☆'.repeat(3-count)}</div>
-                <div className="mt-1">{level.star * count} 分</div>
-              </div>)}
-            </div>
-            <div className="mt-3 h-3 overflow-hidden rounded-full bg-white/80">
-              <div className="h-full rounded-full bg-gradient-to-r from-[#F7C948] to-[#FFB7C5]" style={{width:`${Math.round(storyStarProgress * 100)}%`}} />
+            <div className="story-star-progress-wrap">
+              <div className="story-star-progress-bar">
+                <div className="story-star-progress-fill" style={{width:`${Math.round(storyStarProgress * 100)}%`}} />
+              </div>
+              <div className="story-star-progress-marks">
+                {[1,2,3].map(count=>{
+                  const reached = stars >= count;
+                  return <div key={count} className={`story-star-mark ${reached ? 'is-reached' : ''}`} style={{left:`${(count / 3) * 100}%`}}>
+                    <div className="story-star-mark-icon">★</div>
+                    <div className="story-star-mark-score">{level.star * count}</div>
+                  </div>;
+                })}
+              </div>
             </div>
             <div className="mt-2 flex items-center justify-between text-xs font-black text-[#7A6958]">
               <span>当前得分：{total}</span>
@@ -2345,12 +2622,9 @@ function HappyStickerBookGameInner({account,onAccountChange}:{account:Account;on
               {logs.length===0?<p>贴入后会显示基础分、构型分和材质外观分。</p>:logs.map((log,idx)=><p key={`${log}-${idx}`} className="rounded-2xl bg-[#FFF7E8] p-2">{log}</p>)}
             </div>
           </div>
-
-          <div className="rounded-3xl bg-[#9EE6C9]/30 p-4 text-sm font-bold leading-6"><Gift className="mb-2 h-5 w-5"/>首通解锁：章节贴纸、材质外观与主题背景。</div>
         </aside> : <aside className="space-y-4 rounded-[2.5rem] border-4 border-white bg-[#FFF8EE] p-4 shadow-2xl">
           <div className="rounded-3xl bg-white p-4 shadow-inner">
             <h4 className="mb-2 flex items-center gap-2 font-black"><Trophy className="h-5 w-5 text-[#F7C948]"/>派对高分</h4>
-            <p className="text-sm font-bold text-[#7A6958] leading-6">本层不再完成订单，而是用有限贴纸数冲到目标总分。到达目标后先选一项奖励，再进入下一层。</p>
             <div className="mt-3 grid grid-cols-2 gap-2">
               <Pill label="当前总分" value={total}/>
               <Pill label="目标总分" value={level.targetScore}/>
@@ -2359,9 +2633,18 @@ function HappyStickerBookGameInner({account,onAccountChange}:{account:Account;on
             </div>
           </div>
 
-          <div className="rounded-3xl bg-[#FFF1C9] p-4 text-sm font-bold leading-6">
-            <Sparkles className="mb-2 h-5 w-5"/>
-            过层奖励：每次达到目标总分后，会先弹出三选一奖励。当前阶段三个选项都用硬币奖励占位，后续可扩展为能力、掉落与特殊机制。
+          <div className="rounded-3xl bg-white p-4 shadow-inner">
+            <h4 className="mb-2 flex items-center gap-2 font-black"><Sparkles className="h-5 w-5 text-[#7A8CFF]"/>天气与场景效果</h4>
+            <div className="space-y-3 text-sm font-bold text-[#7A6958] leading-6">
+              <div className="rounded-2xl bg-[#FFF7E8] px-4 py-3">
+                <strong className="block text-[#594A3C]">{partyScene.key} · {PARTY_SCENE_LABELS[partyScene.key]}</strong>
+                <span>{partySceneDescription}</span>
+              </div>
+              <div className="rounded-2xl bg-[#FFF7E8] px-4 py-3">
+                <strong className="block text-[#594A3C]">{PARTY_WEATHER_LABELS[partyWeather.key]}</strong>
+                <span>{partyWeatherDescription}</span>
+              </div>
+            </div>
           </div>
 
           <div className="flex items-center justify-between">
@@ -2454,14 +2737,14 @@ function HappyStickerBookGameInner({account,onAccountChange}:{account:Account;on
                 <p className="mt-2 text-sm font-black text-[#7A6958]">订单全部完成后按得分评星，本次新增星星 {storyStarsDelta}</p>
               </div>
               <div className="mt-5 grid grid-cols-3 gap-2">
-              <button onClick={()=>reset(levelIndex,mode)} className="rounded-2xl border-2 border-[#F7C948]/40 bg-white py-3 font-black text-[#594A3C] shadow">重玩本关</button>
-              <button onClick={()=>{ setResultOpen(false); setMode('storyMenu'); }} className="rounded-2xl border-2 border-[#FFB7C5]/55 bg-white py-3 font-black text-[#594A3C] shadow">返回目录</button>
-              <button onClick={()=>{ if(!isLast) reset(levelIndex+1,mode); }} disabled={isLast} className={`rounded-2xl py-3 font-black shadow ${isLast?'cursor-not-allowed bg-[#EFE3CF] text-[#A89A82]':'bg-gradient-to-r from-[#F7C948] to-[#FFB7C5] text-[#594A3C]'}`}>{isLast?'已通关':'下一关'}</button>
+              <button onClick={()=>{ playUiConfirm(); reset(levelIndex,mode); }} className="rounded-2xl border-2 border-[#F7C948]/40 bg-white py-3 font-black text-[#594A3C] shadow">重玩本关</button>
+              <button onClick={()=>{ playUiBack(); setResultOpen(false); setMode('storyMenu'); }} className="rounded-2xl border-2 border-[#FFB7C5]/55 bg-white py-3 font-black text-[#594A3C] shadow">返回目录</button>
+              <button onClick={()=>{ if(!isLast){ playUiConfirm(); reset(levelIndex+1,mode); } }} disabled={isLast} className={`rounded-2xl py-3 font-black shadow ${isLast?'cursor-not-allowed bg-[#EFE3CF] text-[#A89A82]':'bg-gradient-to-r from-[#F7C948] to-[#FFB7C5] text-[#594A3C]'}`}>{isLast?'已通关':'下一关'}</button>
               </div>
             </>;
           })() : <div className="mt-5 grid grid-cols-2 gap-3">
-            <button onClick={()=>reset(levelIndex,mode)} className="rounded-2xl bg-white py-3 font-black shadow">再来一局</button>
-            <button onClick={()=>reset(Math.min(levelIndex+1,L.length-1),mode)} className="rounded-2xl bg-[#FFB7C5] py-3 font-black shadow">下一关</button>
+            <button onClick={()=>{ playUiConfirm(); reset(levelIndex,mode); }} className="rounded-2xl bg-white py-3 font-black shadow">再来一局</button>
+            <button onClick={()=>{ playUiConfirm(); reset(Math.min(levelIndex+1,L.length-1),mode); }} className="rounded-2xl bg-[#FFB7C5] py-3 font-black shadow">下一关</button>
           </div>}
         </div>
       </div>}
@@ -2478,7 +2761,7 @@ function HappyStickerBookGameInner({account,onAccountChange}:{account:Account;on
           <h2 className="text-center text-3xl font-black">进入下一层前，选择一个奖励</h2>
           <p className="mt-2 text-center text-sm font-bold text-[#7A6958]">当前为占位奖励，后续可扩展为更多能力与内容。</p>
           <div className="mt-6 grid gap-3 md:grid-cols-3">
-            {partyChoices.map(choice=><button key={choice.id} onClick={()=>choosePartyReward(choice)} className="rounded-3xl border-2 border-[#F7C948]/35 bg-white p-5 text-left shadow transition hover:-translate-y-1 hover:shadow-lg">
+            {partyChoices.map(choice=><button key={choice.id} onClick={()=>{ playUiConfirm(); choosePartyReward(choice); }} className="rounded-3xl border-2 border-[#F7C948]/35 bg-white p-5 text-left shadow transition hover:-translate-y-1 hover:shadow-lg">
               <div className="text-3xl">🪙</div>
               <h3 className="mt-3 text-xl font-black">{choice.title}</h3>
               <p className="mt-2 text-sm font-bold text-[#7A6958]">{choice.detail}</p>
@@ -2514,7 +2797,7 @@ function HappyStickerBookGameInner({account,onAccountChange}:{account:Account;on
           <p className="mt-1 text-sm font-bold text-[#7A6958]">本次最高到达：第 {partyLayer} 层</p>
           <div className="mt-5 grid grid-cols-2 gap-3">
             <button onClick={partyExit} className="rounded-2xl bg-white py-3 font-black shadow">回到主界面</button>
-            <button onClick={partyRestart} className="rounded-2xl bg-[#FFB7C5] py-3 font-black shadow">从第 1 层开始</button>
+            <button onClick={()=>{ playUiConfirm(); partyRestart(); }} className="rounded-2xl bg-[#FFB7C5] py-3 font-black shadow">从第 1 层开始</button>
           </div>
         </div>
       </div>}

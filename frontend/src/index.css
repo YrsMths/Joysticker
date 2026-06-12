@@ -370,6 +370,118 @@
     box-sizing: border-box;
   }
 
+.party-top-stage {
+  position: relative;
+  overflow: hidden;
+  border-radius: 2rem;
+  min-height: 196px;
+  padding: 1rem 1rem 1.1rem;
+  background: linear-gradient(180deg, rgba(255,255,255,0.84), rgba(255,247,232,0.78));
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.55);
+}
+
+.party-scene-stage-bg {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.party-scene-frame {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: saturate(1.03) brightness(1.02);
+}
+
+.party-top-stage::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(255,253,247,0.24), rgba(255,247,232,0.82) 82%, rgba(255,247,232,0.92));
+  pointer-events: none;
+}
+
+.party-top-stage-foreground {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: .9rem;
+}
+
+.party-top-stage-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: .9rem;
+}
+
+.party-weather-header-animation {
+  position: relative;
+  width: 84px;
+  aspect-ratio: 1 / 1;
+  filter: drop-shadow(0 12px 18px rgba(89, 74, 60, 0.18));
+  flex-shrink: 0;
+}
+
+.party-weather-frame {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  opacity: 0;
+  animation: partyWeatherFrame 1.2s steps(1) infinite;
+}
+
+.party-weather-bubble {
+  max-width: 260px;
+  padding: .65rem 1rem;
+  border-radius: 1rem;
+  background: rgba(255, 255, 255, 0.8);
+  box-shadow: 0 10px 22px rgba(89, 74, 60, 0.12);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  text-align: right;
+  gap: .2rem;
+}
+
+.party-weather-bubble-compact {
+  max-width: min(34vw, 320px);
+  padding: .48rem .82rem;
+}
+
+.party-weather-bubble-compact strong {
+  font-size: .74rem;
+}
+
+.party-weather-bubble-compact span {
+  font-size: .62rem;
+  line-height: 1.28;
+}
+
+.party-weather-bubble strong {
+  font-size: .86rem;
+  font-weight: 900;
+  color: #594A3C;
+}
+
+.party-weather-bubble span {
+  font-size: .72rem;
+  line-height: 1.45;
+  font-weight: 800;
+  color: #7A6958;
+}
+
+@keyframes partyWeatherFrame {
+  0%, 3.9% { opacity: 1; }
+  4%, 100% { opacity: 0; }
+}
+
   /* shape-sticker 占据 rotatedShape 的 N×M 网格区域（cells 已包含旋转）。
      视觉层始终填满当前旋转后的网格包围盒，只做 rotate，不再按原拓扑额外换算宽高，
      以避免不同角度下出现二次缩放导致的“忽大忽小”。 */
@@ -3172,6 +3284,20 @@
   max-width: 560px;
   min-width: 0;
 }
+.party-score-row {
+  max-width: none;
+}
+.story-top-stage {
+  display: flex;
+  flex-direction: column;
+  gap: .9rem;
+}
+.story-top-stage-title {
+  min-width: 0;
+}
+.story-score-row {
+  max-width: none;
+}
 .score-tile {
   min-width: 0;
   display: flex;
@@ -3286,6 +3412,9 @@
 }
 
 @media (max-width: 640px) {
+  .story-top-stage {
+    gap: .75rem;
+  }
   .score-row {
     gap: 4px;
   }
@@ -3313,6 +3442,74 @@
   .score-op-eq {
     font-size: 16px;
   }
+}
+
+.story-star-progress-wrap {
+  position: relative;
+  padding: .75rem 0 2.9rem;
+}
+.story-star-progress-bar {
+  height: 14px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255,255,255,.82);
+  box-shadow: inset 0 0 0 1px rgba(247,201,72,.16);
+}
+.story-star-progress-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #F7C948, #FFB7C5);
+  box-shadow: 0 4px 12px rgba(247, 201, 72, 0.24);
+}
+.story-star-progress-marks {
+  position: absolute;
+  inset: 0 0 auto 0;
+  pointer-events: none;
+}
+.story-star-mark {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  color: #9B7D62;
+}
+.story-star-mark::before {
+  content: "";
+  position: absolute;
+  top: .55rem;
+  width: 2px;
+  height: 22px;
+  background: rgba(155, 125, 98, 0.26);
+}
+.story-star-mark-icon {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.92);
+  box-shadow: 0 4px 10px rgba(89, 74, 60, 0.1);
+  font-size: 16px;
+  color: #C7B59E;
+}
+.story-star-mark-score {
+  margin-top: 1.6rem;
+  font-size: 12px;
+  font-weight: 900;
+  color: #7A6958;
+}
+.story-star-mark.is-reached .story-star-mark-icon {
+  background: linear-gradient(135deg, #FFF3CC, #F7C948);
+  color: #8D6200;
+  box-shadow: 0 6px 14px rgba(247, 201, 72, 0.24);
+}
+.story-star-mark.is-reached::before {
+  background: rgba(247, 201, 72, 0.42);
 }
 
 /* 跳动动画：弹性放大 + 抖动 + 暖色闪现，结束自动复原。
