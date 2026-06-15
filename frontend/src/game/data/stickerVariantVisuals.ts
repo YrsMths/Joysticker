@@ -12,7 +12,7 @@ const MATERIAL_DECO_CLASSES: Partial<Record<StickerMaterialKey, string>> = {
 const FINISH_DECO_CLASSES: Partial<Record<StickerFinishKey, string>> = {
   金色闪粉: 'shape-finish shape-finish-gold',
   彩色闪粉: 'shape-finish shape-finish-confetti',
-  动态贴纸: 'shape-finish shape-finish-dynamic',
+  呼吸贴纸: 'shape-finish shape-finish-dynamic',
   荧光贴纸: 'shape-finish shape-finish-glow',
 };
 

@@ -272,7 +272,7 @@ const L:any[]=[
     [['upgrade','同类相邻升级 1 次',1],['score','总分达到 34',34]],
     {reward:['3,2']},
     {2:['2,1','2,2','3,3','4,3','5,2'],3:['3,2']},
-    {普通:80,布料:20},{普通:80,动态贴纸:20}),
+    {普通:80,布料:20},{普通:80,呼吸贴纸:20}),
   lv('1-8',1,'夏日广场','首章综合','喷泉、气球、小舞台、迷雾','完成 2 条订单',40,
     ['strawberry','cake','flower','ticket','balloon','music','star'],
     [['food','收集 3 个食物',3],['material','材质或外观 2 次',2]],
@@ -320,7 +320,7 @@ const L:any[]=[
     [['upgrade','完成 1 次升级',1],['material','材质触发 2 次',2]],
     {reward:['2,2','5,3']},
     {2:['1,2','2,3','3,2','4,3','5,2','6,3'],3:['2,2','5,3']},
-    {普通:50,布料:30,水晶贴:20},{普通:75,动态贴纸:25},{sponge:10}),
+    {普通:50,布料:30,水晶贴:20},{普通:75,呼吸贴纸:25},{sponge:10}),
   lv('2-8',2,'烟花广场','第二章综合','烟花、庆典、舞台远景','材质清障海绵胶综合',44,
     ['strawberry','cake','music','ticket','daisy','gummy','star'],
     [['material','材质触发 2 次',2],['sponge','使用 1 次海绵胶',1],['crate','清除 1 个纸箱',1]],
@@ -543,6 +543,49 @@ function load(){
 }
 
 function Pill({label,value}:{label:string;value:any}){return <div className="rounded-2xl bg-white/80 px-3 py-2 text-center shadow"><div className="text-[11px] font-black text-[#9B7D62]">{label}</div><div className="text-lg font-black text-[#594A3C]">{value}</div></div>;}
+
+function ToolActionButton({
+  icon,
+  label,
+  cost,
+  onClick,
+  tone,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  cost?: number;
+  onClick: ()=>void;
+  tone: 'rotate'|'refresh'|'recycle';
+}){
+  return <button onClick={onClick} className={`tool-button tool-button-${tone}`}>
+    <span className="tool-button-icon">{icon}</span>
+    <span className="tool-button-copy">
+      <strong>{label}</strong>
+      <span>{cost ? `${cost} 枚硬币` : '不消耗硬币'}</span>
+    </span>
+  </button>;
+}
+
+function PartyStatCard({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: React.ReactNode;
+  tone?: 'default'|'highlight'|'coin'|'layer';
+}){
+  return <div className={`party-stat-card${tone ? ` party-stat-card-${tone}` : ''}`}>
+    <div className="party-stat-card-tape" aria-hidden="true"/>
+    <div className="party-stat-card-deco" aria-hidden="true"/>
+    {tone==='highlight' && <div className="party-stat-card-medal" aria-hidden="true"><span>目标</span></div>}
+    <div className="party-stat-card-head">
+      <div className="party-stat-card-label">{label}</div>
+      <span className={`party-stat-card-dot${tone ? ` party-stat-card-dot-${tone}` : ''}`} aria-hidden="true"/>
+    </div>
+    <div className="party-stat-card-value">{value}</div>
+  </div>;
+}
 
 const SHOP_ITEMS = [
   { id:'shop-mystery-pack', name:'神秘贴纸包', price:12, desc:'先作为商店占位商品，后续可扩充为关外解锁的新贴纸包。' },
@@ -1117,17 +1160,23 @@ function Diary({onBack,onPublish,unlocks}:{onBack:()=>void;onPublish:()=>void;un
               : { materialClass:'', finishClass:'' };
             if(!b.unlocked){
               return <button key={key} type="button" onClick={()=>{ setBoxToast(`「${b.name}」${variantLabel} 版本尚未解锁，前往派对高分模式挑战获取。`); setTimeout(()=>setBoxToast(''),2400); }} className="diary-sticker-item locked flex flex-col items-center gap-1 rounded-xl bg-white/40 p-2 cursor-not-allowed shadow-sm relative">
-                <div className="diary-sticker-art opacity-30 grayscale"><img src={b.asset} alt={b.name} draggable={false}/></div>
+                <div className="diary-sticker-art opacity-30 grayscale">
+                  <div className="diary-sticker-art-box">
+                    <img src={b.asset} alt={b.name} draggable={false}/>
+                  </div>
+                </div>
                 <Lock className="absolute right-1 top-1 h-3 w-3 text-[#9B7D62]"/>
                 <span className="text-[10px] font-black text-[#9B7D62] truncate w-full text-center">{b.name}</span>
                 <span className="text-[9px] font-bold text-[#9B7D62] truncate w-full text-center">{variantLabel}</span>
               </button>;
             }
             return <div key={key} draggable onDragStart={(e)=>{ e.dataTransfer.setData('application/diary-sticker',JSON.stringify({asset:b.asset,name:`${b.name}（${variantLabel}）`,id:b.id,material:b.material,finish:b.finish})); e.dataTransfer.effectAllowed='copy'; }} className="diary-sticker-item flex flex-col items-center gap-1 rounded-xl bg-white/70 p-2 cursor-grab active:cursor-grabbing hover:bg-white shadow-sm relative">
-              <div className="diary-sticker-art relative" style={{ ['--sticker-mask' as any]: `url("${b.asset}")` } as React.CSSProperties}>
-                <img src={b.asset} alt={b.name} draggable={false}/>
-                {decoMat && <div className={decoMat}/>}
-                {decoFin && <div className={decoFin}/>}
+              <div className="diary-sticker-art">
+                <div className="diary-sticker-art-box relative" style={{ ['--sticker-mask' as any]: `url("${b.asset}")` } as React.CSSProperties}>
+                  <img src={b.asset} alt={b.name} draggable={false}/>
+                  {decoMat && <div className={decoMat}/>}
+                  {decoFin && <div className={decoFin}/>}
+                </div>
               </div>
               <span className="text-[10px] font-black text-[#594A3C] truncate w-full text-center">{b.name}</span>
               <span className="text-[9px] font-bold text-[#7A6958] truncate w-full text-center">{variantLabel}</span>
@@ -1351,7 +1400,7 @@ function HappyStickerBookGameInner({account,onAccountChange}:{account:Account;on
 
   // 蓄积值（局内累计）
   const [fabricStack,setFabricStack] = useState(0); // 布料蓄积层
-  const [dynamicTurn,setDynamicTurn] = useState({turn:0,fired:false}); // 动态贴纸：当前回合是否已首触
+  const [dynamicTurn,setDynamicTurn] = useState({turn:0,fired:false}); // 呼吸贴纸：当前回合是否已首触
   const [lastChainPattern,setLastChainPattern] = useState(0); // 镭射追击参考
 
   const [fxEvent,setFxEvent] = useState<FxEvent|null>(null);
@@ -1987,9 +2036,9 @@ function HappyStickerBookGameInner({account,onAccountChange}:{account:Account;on
         if(s===0) return { score:0, detail:'' };
         return { score:s, detail:`彩色闪粉彩屑 +${s}` };
       }
-      case '动态贴纸': {
+      case '呼吸贴纸': {
         const s = ctx.dynamicFirst ? 2 : 1;
-        return { score:Math.min(s,cap), detail:`动态贴纸节奏 +${s}` };
+        return { score:Math.min(s,cap), detail:`呼吸贴纸节奏 +${s}` };
       }
       case '荧光贴纸': {
         const s = Math.min(2*ctx.F, cap);
@@ -2081,8 +2130,8 @@ function HappyStickerBookGameInner({account,onAccountChange}:{account:Account;on
     const extraUpgraded = upgrade?.extraUpgraded || [];
     const effectiveUpgradeCount = upgrade ? Math.max(1, scoreStickerIds.length) : 0;
 
-    // 动态贴纸首触判定
-    const dynamicFirst = activeSticker.finish==='动态贴纸' && (dynamicTurn.turn!==turn || !dynamicTurn.fired);
+    // 呼吸贴纸首触判定
+    const dynamicFirst = activeSticker.finish==='呼吸贴纸' && (dynamicTurn.turn!==turn || !dynamicTurn.fired);
 
     // 订单推进计数（用于烫金）
     const orderTargetsBefore = orders.map(o=>o.progress);
@@ -2211,7 +2260,7 @@ function HappyStickerBookGameInner({account,onAccountChange}:{account:Account;on
     setTurn(v=>v+1);
     setFabricStack(nextFabricStack);
     setLastChainPattern(pg);
-    if(activeSticker.finish==='动态贴纸'){
+    if(activeSticker.finish==='呼吸贴纸'){
       setDynamicTurn({turn, fired:true});
     }
 
@@ -2612,17 +2661,17 @@ function HappyStickerBookGameInner({account,onAccountChange}:{account:Account;on
                 <p className="mt-1 text-xs font-bold text-[#7A6958]">{c.kind==='sticker'?`形状：${SHAPE_LABEL[c.shapeKey]||''}`:c.note}</p>
                 {c.kind==='sticker' && <div className="mt-2 flex flex-wrap gap-1">
                   <span className="tag">{c.type}</span>
-                  <span className={`tag tag-${MATERIALS[c.material as MaterialKey].visual}`} title={MATERIALS[c.material as MaterialKey].desc}>{c.material}</span>
-                  <span className={`tag tag-${FINISHES[c.finish as FinishKey].visual}`} title={FINISHES[c.finish as FinishKey].desc}>{c.finish}</span>
+                  <span className={`tag candidate-tag-material tag-${MATERIALS[c.material as MaterialKey].visual}`} title={MATERIALS[c.material as MaterialKey].desc}>{c.material}</span>
+                  <span className={`tag candidate-tag-finish tag-${FINISHES[c.finish as FinishKey].visual}`} title={FINISHES[c.finish as FinishKey].desc}>{c.finish}</span>
                 </div>}
               </div>
             </button>)}
           </div>
 
           <div className="grid grid-cols-3 gap-2">
-            <button onClick={rotate} className="tool-button"><RotateCw className="h-4 w-4"/>旋转</button>
-            <button onClick={refresh} className="tool-button"><RefreshCw className="h-4 w-4"/>刷新</button>
-            <button onClick={recycle} className="tool-button"><Eraser className="h-4 w-4"/>回收</button>
+            <ToolActionButton onClick={rotate} icon={<RotateCw className="h-4 w-4"/>} label="旋转" tone="rotate"/>
+            <ToolActionButton onClick={refresh} icon={<RefreshCw className="h-4 w-4"/>} label="刷新" cost={3} tone="refresh"/>
+            <ToolActionButton onClick={recycle} icon={<Eraser className="h-4 w-4"/>} label="回收" cost={5} tone="recycle"/>
           </div>
           <div className="grid grid-cols-3 gap-2">
             <Pill label="硬币" value={coins}/>
@@ -2639,11 +2688,11 @@ function HappyStickerBookGameInner({account,onAccountChange}:{account:Account;on
         </aside> : <aside className="space-y-4 rounded-[2.5rem] border-4 border-white bg-[#FFF8EE] p-4 shadow-2xl">
           <div className="rounded-3xl bg-white p-4 shadow-inner">
             <h4 className="mb-2 flex items-center gap-2 font-black"><Trophy className="h-5 w-5 text-[#F7C948]"/>派对高分</h4>
-            <div className="mt-3 grid grid-cols-2 gap-2">
-              <Pill label="当前总分" value={total}/>
-              <Pill label="目标总分" value={level.targetScore}/>
-              <Pill label="硬币" value={coins}/>
-              <Pill label="层数" value={`第 ${partyLayer} 层`}/>
+            <div className="party-stats-grid mt-3">
+              <PartyStatCard label="当前总分" value={total}/>
+              <PartyStatCard label="目标总分" value={level.targetScore} tone="highlight"/>
+              <PartyStatCard label="硬币" value={coins} tone="coin"/>
+              <PartyStatCard label="层数" value={`第 ${partyLayer} 层`} tone="layer"/>
             </div>
           </div>
 
@@ -2715,17 +2764,17 @@ function HappyStickerBookGameInner({account,onAccountChange}:{account:Account;on
                 <p className="mt-1 text-xs font-bold text-[#7A6958]">{c.kind==='sticker'?`形状：${SHAPE_LABEL[c.shapeKey]||''}`:c.note}</p>
                 {c.kind==='sticker' && <div className="mt-2 flex flex-wrap gap-1">
                   <span className="tag">{c.type}</span>
-                  <span className={`tag tag-${MATERIALS[c.material as MaterialKey].visual}`} title={MATERIALS[c.material as MaterialKey].desc}>{c.material}</span>
-                  <span className={`tag tag-${FINISHES[c.finish as FinishKey].visual}`} title={FINISHES[c.finish as FinishKey].desc}>{c.finish}</span>
+                  <span className={`tag candidate-tag-material tag-${MATERIALS[c.material as MaterialKey].visual}`} title={MATERIALS[c.material as MaterialKey].desc}>{c.material}</span>
+                  <span className={`tag candidate-tag-finish tag-${FINISHES[c.finish as FinishKey].visual}`} title={FINISHES[c.finish as FinishKey].desc}>{c.finish}</span>
                 </div>}
               </div>
             </button>)}
           </div>
 
           <div className="grid grid-cols-3 gap-2">
-            <button onClick={rotate} className="tool-button"><RotateCw className="h-4 w-4"/>旋转</button>
-            <button onClick={refresh} className="tool-button"><RefreshCw className="h-4 w-4"/>刷新</button>
-            <button onClick={recycle} className="tool-button"><Eraser className="h-4 w-4"/>回收</button>
+            <ToolActionButton onClick={rotate} icon={<RotateCw className="h-4 w-4"/>} label="旋转" tone="rotate"/>
+            <ToolActionButton onClick={refresh} icon={<RefreshCw className="h-4 w-4"/>} label="刷新" cost={3} tone="refresh"/>
+            <ToolActionButton onClick={recycle} icon={<Eraser className="h-4 w-4"/>} label="回收" cost={5} tone="recycle"/>
           </div>
 
           <div className="rounded-3xl bg-white/80 p-4 shadow-inner">

@@ -14,6 +14,6 @@ export const FINISHES: Record<StickerFinishKey,{label:string;desc:string;cap:num
   '普通':     { label:'普通',     desc:'素色，无装饰能力',                                    cap:0, visual:'fin-normal' },
   '金色闪粉': { label:'金色闪粉', desc:'高光：B ≥ 4 或 C ≥ 2 触发；奖励格再 +1（上限 4）',  cap:4, visual:'fin-gold' },
   '彩色闪粉': { label:'彩色闪粉', desc:'彩屑：每邻位 +1，N ≥ 3 再 +1（上限 5）',             cap:5, visual:'fin-confetti' },
-  '动态贴纸': { label:'动态贴纸', desc:'节奏：本回合首触 +2，后续每次 +1（上限 2/次）',      cap:2, visual:'fin-dynamic' },
+  '呼吸贴纸': { label:'呼吸贴纸', desc:'节奏：本回合首触 +2，后续每次 +1（上限 2/次）',      cap:2, visual:'fin-dynamic' },
   '荧光贴纸': { label:'荧光贴纸', desc:'迷雾揭示：每邻接迷雾揭示并翻倍（min 2F，上限 8）',   cap:8, visual:'fin-glow' },
 };

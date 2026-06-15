@@ -104,7 +104,7 @@ export function generatePartyLevel(layer: number): PartyLevel {
 
   // 难度曲线：层数越高，目标分数越大
   const star = 8 + Math.floor(layer * 4 + rng() * 6);
-  const targetScore = 22 + Math.floor(layer * 14 + rng() * 8);
+  const targetScore = 144 + Math.floor(layer * 112 + rng() * 256 + layer * 12);
 
   // 候选贴纸池：5-7 张随机贴纸
   const poolSize = 5 + Math.floor(rng() * 3);
@@ -146,8 +146,8 @@ export function generatePartyLevel(layer: number): PartyLevel {
 
   const finW = Math.min(40, 8 + layer * 3);
   const fins: Record<string,number> = { 普通: 100 - finW };
-  const finsExtras: ['金色闪粉'|'彩色闪粉'|'动态贴纸'|'荧光贴纸', number][] = [
-    ['金色闪粉',0.3],['彩色闪粉',0.25],['动态贴纸',0.25],['荧光贴纸',0.2],
+  const finsExtras: ['金色闪粉'|'彩色闪粉'|'呼吸贴纸'|'荧光贴纸', number][] = [
+    ['金色闪粉',0.3],['彩色闪粉',0.25],['呼吸贴纸',0.25],['荧光贴纸',0.2],
   ];
   finsExtras.forEach(([k,w])=>{ fins[k] = Math.max(1, Math.round(finW * w)); });
 

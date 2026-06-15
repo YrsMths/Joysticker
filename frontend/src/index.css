@@ -930,20 +930,31 @@
   }
   .shape-finish-gold {
     background:
-      radial-gradient(circle at 22% 28%, rgba(255,235,150,.95) 0 4%, transparent 5%),
-      radial-gradient(circle at 70% 30%, rgba(255,235,150,.95) 0 4%, transparent 5%),
-      radial-gradient(circle at 60% 70%, rgba(255,235,150,.95) 0 4%, transparent 5%),
-      radial-gradient(circle at 25% 75%, rgba(255,235,150,.95) 0 4%, transparent 5%),
-      radial-gradient(circle at 80% 60%, rgba(255,235,150,.95) 0 4%, transparent 5%);
+      radial-gradient(circle at 18% 22%, rgba(255,235,150,.95) 0 2.4%, transparent 3.4%),
+      radial-gradient(circle at 34% 36%, rgba(255,235,150,.95) 0 2.1%, transparent 3.1%),
+      radial-gradient(circle at 52% 18%, rgba(255,235,150,.92) 0 2.3%, transparent 3.3%),
+      radial-gradient(circle at 70% 30%, rgba(255,235,150,.95) 0 2.5%, transparent 3.5%),
+      radial-gradient(circle at 82% 24%, rgba(255,235,150,.9) 0 2%, transparent 3%),
+      radial-gradient(circle at 22% 58%, rgba(255,235,150,.92) 0 2.2%, transparent 3.2%),
+      radial-gradient(circle at 44% 68%, rgba(255,235,150,.95) 0 2.4%, transparent 3.4%),
+      radial-gradient(circle at 63% 74%, rgba(255,235,150,.95) 0 2.2%, transparent 3.2%),
+      radial-gradient(circle at 80% 60%, rgba(255,235,150,.95) 0 2.5%, transparent 3.5%),
+      radial-gradient(circle at 28% 82%, rgba(255,235,150,.9) 0 2.1%, transparent 3.1%);
     animation: gold-shimmer 1.8s ease-in-out infinite;
   }
   .shape-finish-confetti {
     background:
-      radial-gradient(circle at 18% 32%, #ff7e93 0 5%, transparent 6%),
-      radial-gradient(circle at 75% 22%, #9EE6C9 0 5%, transparent 6%),
-      radial-gradient(circle at 60% 72%, #A7D8FF 0 5%, transparent 6%),
-      radial-gradient(circle at 32% 80%, #F7C948 0 5%, transparent 6%),
-      radial-gradient(circle at 85% 65%, #ffb7c5 0 5%, transparent 6%);
+      radial-gradient(circle at 16% 28%, #ff7e93 0 2.8%, transparent 3.8%),
+      radial-gradient(circle at 30% 18%, #ffd86c 0 2.4%, transparent 3.4%),
+      radial-gradient(circle at 48% 34%, #9EE6C9 0 2.6%, transparent 3.6%),
+      radial-gradient(circle at 72% 20%, #A7D8FF 0 2.8%, transparent 3.8%),
+      radial-gradient(circle at 84% 30%, #ffb7c5 0 2.4%, transparent 3.4%),
+      radial-gradient(circle at 22% 56%, #F7C948 0 2.7%, transparent 3.7%),
+      radial-gradient(circle at 38% 72%, #ff9db0 0 2.5%, transparent 3.5%),
+      radial-gradient(circle at 58% 62%, #9EE6C9 0 2.6%, transparent 3.6%),
+      radial-gradient(circle at 74% 76%, #d8b4ff 0 2.7%, transparent 3.7%),
+      radial-gradient(circle at 88% 64%, #A7D8FF 0 2.5%, transparent 3.5%),
+      radial-gradient(circle at 28% 84%, #F7C948 0 2.8%, transparent 3.8%);
     animation: confetti-wiggle 2.4s ease-in-out infinite;
   }
   .shape-finish-dynamic {
@@ -1354,10 +1365,32 @@
 
   /* 异形预览容器：宽高由 inline style 按 bounding box 设置；PNG 自带白边，无需再叠加白边 drop-shadow */
   .candidate-art.shape-preview {
+    position: relative;
     background: transparent;
     overflow: visible;
     filter: drop-shadow(0 3px 5px rgba(89, 74, 60, .22));
     transition: filter .2s ease, transform .2s ease;
+  }
+
+  .candidate-art.shape-preview .sticker-render {
+    width: auto;
+    height: auto;
+    max-width: 100%;
+    max-height: 100%;
+    flex: 0 0 auto;
+  }
+
+  .candidate-art.shape-preview .sticker-render-shadow {
+    opacity: .2;
+  }
+
+  .candidate-art.shape-preview .sticker-render-paper {
+    opacity: .92;
+  }
+
+  .candidate-art.shape-preview .shape-deco,
+  .candidate-art.shape-preview .shape-finish {
+    opacity: .95;
   }
 
   /* PNG 本身已经是异形 + 白边的透明图，直接显示即可 */
@@ -1456,6 +1489,293 @@
   .tag-fin-confetti { background: linear-gradient(110deg, #ffd5d5, #fff0a8, #d6ffe1, #d5ecff, #f0d5ff); color: #5a3a4a; }
   .tag-fin-dynamic { background: #c9e8ff; color: #1f4a6e; }
   .tag-fin-glow { background: #d8ffe6; color: #1c5a3a; box-shadow: 0 0 6px rgba(120, 255, 180, .55); }
+  .tag-mat-normal { background: linear-gradient(135deg, #fff7e8, #fffdf8); color: #7a6958; }
+  .tag-fin-normal { background: linear-gradient(135deg, #f6efe4, #fffaf3); color: #7a6958; }
+  .candidate-tag-material {
+    border-width: 1.5px;
+    border-color: rgba(89, 74, 60, .08);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.6);
+  }
+  .candidate-tag-finish {
+    border-width: 1.5px;
+    border-color: rgba(89, 74, 60, .12);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.6), 0 2px 6px rgba(89,74,60,.06);
+  }
+  .candidate-tag-material.tag-mat-normal { background: #F5EFE5; color: #7A6958; }
+  .candidate-tag-material.tag-mat-holo { background: linear-gradient(110deg, #f8d7ff, #d4e9ff, #dcffe6); color: #4a3c5a; }
+  .candidate-tag-material.tag-mat-fabric { background: #E8D5B7; color: #6B4C2A; }
+  .candidate-tag-material.tag-mat-frosted { background: #E2E5ED; color: #5A6370; }
+  .candidate-tag-material.tag-mat-crystal { background: linear-gradient(135deg, #dff5ff, #ffffff); color: #2A6F92; }
+  .candidate-tag-material.tag-mat-bubble { background: #FFD8E9; color: #8A3A5E; }
+  .candidate-tag-material.tag-mat-gold { background: linear-gradient(135deg, #FFF0B5, #F7C948); color: #6B4A14; }
+  .candidate-tag-finish.tag-fin-normal { background: #F3EBDD; color: #7A6958; }
+  .candidate-tag-finish.tag-fin-gold { background: linear-gradient(135deg, #FFEFB7, #F6CF56); color: #6B4A14; }
+  .candidate-tag-finish.tag-fin-confetti { background: linear-gradient(110deg, #ffc7d2, #ffe68f, #caf8d9, #cde5ff, #ecd2ff); color: #5a3a4a; }
+  .candidate-tag-finish.tag-fin-dynamic { background: #BFE3FF; color: #1F4A6E; }
+  .candidate-tag-finish.tag-fin-glow { background: #CCFFE0; color: #1C5A3A; box-shadow: 0 0 8px rgba(120, 255, 180, .4); }
+
+  .tool-button {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 58px;
+    padding: 10px 12px;
+    border-radius: 18px;
+    border: 1.5px solid rgba(89, 74, 60, .1);
+    background: linear-gradient(180deg, rgba(255,255,255,.96), rgba(255,247,232,.96));
+    box-shadow: 0 8px 18px rgba(89,74,60,.08), inset 0 1px 0 rgba(255,255,255,.8);
+    text-align: left;
+    transition: transform .16s ease, box-shadow .16s ease, border-color .16s ease;
+  }
+  .tool-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 22px rgba(89,74,60,.12), inset 0 1px 0 rgba(255,255,255,.85);
+  }
+  .tool-button-icon {
+    width: 34px;
+    height: 34px;
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px;
+    background: rgba(255,255,255,.84);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.7);
+  }
+  .tool-button-copy {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .tool-button-copy strong {
+    font-size: 14px;
+    font-weight: 900;
+    color: #594A3C;
+    line-height: 1.1;
+  }
+  .tool-button-copy span {
+    font-size: 11px;
+    font-weight: 800;
+    color: #8D7A67;
+    line-height: 1.2;
+  }
+  .tool-button-rotate .tool-button-icon {
+    color: #4E86D9;
+    background: linear-gradient(135deg, #E7F3FF, #CFE4FF);
+  }
+  .tool-button-refresh .tool-button-icon {
+    color: #B36A00;
+    background: linear-gradient(135deg, #FFF4D3, #F7D77A);
+  }
+  .tool-button-recycle .tool-button-icon {
+    color: #C45A67;
+    background: linear-gradient(135deg, #FFE1E6, #FFC7D0);
+  }
+
+  .party-stats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .party-stat-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-height: 78px;
+    padding: 15px 15px 13px;
+    border-radius: 20px;
+    background:
+      linear-gradient(180deg, rgba(255,252,248,.99), rgba(255,246,238,.95)),
+      radial-gradient(circle at 18% 22%, rgba(255,183,197,.12) 0 8px, transparent 8.5px),
+      radial-gradient(circle at 82% 74%, rgba(167,216,255,.1) 0 8px, transparent 8.5px);
+    box-shadow:
+      0 14px 24px rgba(89,74,60,.08),
+      inset 0 1px 0 rgba(255,255,255,.88),
+      inset 0 0 0 1px rgba(255,255,255,.5),
+      0 0 0 1px rgba(89,74,60,.05);
+    border: 1px solid rgba(247,201,72,.12);
+  }
+  .party-stat-card-tape {
+    position: absolute;
+    top: -7px;
+    left: 18px;
+    width: 40px;
+    height: 14px;
+    border-radius: 4px;
+    background: linear-gradient(180deg, rgba(255,255,255,.52), rgba(255,214,225,.46));
+    border: 1px solid rgba(255,255,255,.34);
+    box-shadow: 0 3px 6px rgba(89,74,60,.08);
+    opacity: .9;
+  }
+  .party-stat-card-deco {
+    position: absolute;
+    right: 12px;
+    top: 12px;
+    width: 30px;
+    height: 30px;
+    opacity: .42;
+    pointer-events: none;
+  }
+  .party-stat-card-highlight .party-stat-card-deco {
+    background:
+      radial-gradient(circle at 50% 50%, rgba(255,243,175,.95) 0 4px, transparent 4.2px),
+      radial-gradient(circle at 18% 38%, rgba(255,210,120,.72) 0 1.4px, transparent 1.6px),
+      radial-gradient(circle at 80% 62%, rgba(255,210,120,.72) 0 1.4px, transparent 1.6px),
+      radial-gradient(circle at 50% 12%, rgba(255,210,120,.78) 0 1.4px, transparent 1.6px),
+      radial-gradient(circle at 50% 88%, rgba(255,210,120,.78) 0 1.4px, transparent 1.6px);
+  }
+  .party-stat-card-highlight .party-stat-card-tape {
+    background:
+      linear-gradient(180deg, rgba(255,255,255,.48), rgba(255,232,150,.54)),
+      radial-gradient(circle at 18% 55%, rgba(255,255,255,.25) 0 1.4px, transparent 1.6px),
+      radial-gradient(circle at 52% 45%, rgba(255,255,255,.25) 0 1.4px, transparent 1.6px),
+      radial-gradient(circle at 82% 60%, rgba(255,255,255,.25) 0 1.4px, transparent 1.6px);
+  }
+  .party-stat-card-coin .party-stat-card-tape {
+    background:
+      linear-gradient(180deg, rgba(255,255,255,.5), rgba(255,205,220,.46)),
+      radial-gradient(circle at 24% 52%, rgba(255,255,255,.22) 0 1.6px, transparent 1.8px),
+      radial-gradient(circle at 74% 44%, rgba(255,255,255,.2) 0 1.3px, transparent 1.5px);
+  }
+  .party-stat-card-coin .party-stat-card-deco {
+    background:
+      radial-gradient(circle at 50% 50%, rgba(255,190,205,.85) 0 3px, transparent 3.2px),
+      radial-gradient(circle at 20% 40%, rgba(255,190,205,.66) 0 1.4px, transparent 1.6px),
+      radial-gradient(circle at 80% 60%, rgba(255,190,205,.66) 0 1.4px, transparent 1.6px);
+  }
+  .party-stat-card-layer .party-stat-card-tape {
+    background:
+      linear-gradient(180deg, rgba(255,255,255,.5), rgba(205,227,255,.52)),
+      radial-gradient(circle at 20% 54%, rgba(255,255,255,.24) 0 1.4px, transparent 1.6px),
+      radial-gradient(circle at 50% 40%, rgba(255,255,255,.24) 0 1.4px, transparent 1.6px),
+      radial-gradient(circle at 80% 58%, rgba(255,255,255,.24) 0 1.4px, transparent 1.6px);
+  }
+  .party-stat-card-layer .party-stat-card-deco {
+    background:
+      radial-gradient(circle at 50% 50%, rgba(144,190,255,.82) 0 3px, transparent 3.2px),
+      radial-gradient(circle at 26% 34%, rgba(144,190,255,.72) 0 1.4px, transparent 1.6px),
+      radial-gradient(circle at 74% 34%, rgba(144,190,255,.72) 0 1.4px, transparent 1.6px),
+      radial-gradient(circle at 38% 74%, rgba(144,190,255,.72) 0 1.4px, transparent 1.6px),
+      radial-gradient(circle at 62% 74%, rgba(144,190,255,.72) 0 1.4px, transparent 1.6px);
+  }
+  .party-stat-card-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .party-stat-card-label {
+    font-size: 10px;
+    font-weight: 800;
+    color: #9B7D62;
+    letter-spacing: .04em;
+  }
+  .party-stat-card-dot {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 10px;
+    height: 10px;
+    border-radius: 999px;
+    background: #D6C7B6;
+    box-shadow: 0 0 0 3px rgba(255,255,255,.5);
+  }
+  .party-stat-card-value {
+    margin-top: 7px;
+    font-size: 22px;
+    line-height: 1.1;
+    font-weight: 800;
+    color: #594A3C;
+  }
+  .party-stat-card-highlight {
+    position: relative;
+    overflow: hidden;
+    background:
+      linear-gradient(135deg, #FFF6DE, #FFDFA0 52%, #FFCFC5),
+      radial-gradient(circle at 18% 24%, rgba(255,183,197,.18) 0 7px, transparent 7.5px),
+      radial-gradient(circle at 82% 78%, rgba(255,255,255,.24) 0 7px, transparent 7.5px);
+    box-shadow:
+      0 18px 28px rgba(255,183,197,.18),
+      inset 0 1px 0 rgba(255,255,255,.74),
+      inset 0 -10px 18px rgba(255,156,177,.12);
+    border-color: rgba(255,183,197,.3);
+  }
+  .party-stat-card-medal {
+    position: absolute;
+    top: -16px;
+    right: 8px;
+    width: 64px;
+    height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: radial-gradient(circle at 50% 48%, #FFF6E8 0 44%, #FFB4C9 45% 67%, #FF8DAA 68% 100%);
+    clip-path: polygon(50% 0%, 60% 10%, 74% 4%, 79% 18%, 93% 18%, 90% 32%, 100% 42%, 89% 52%, 95% 66%, 81% 69%, 81% 84%, 67% 79%, 58% 92%, 46% 82%, 33% 91%, 26% 78%, 11% 82%, 10% 67%, 0% 58%, 10% 46%, 4% 33%, 18% 30%, 19% 16%, 32% 18%, 40% 6%);
+    box-shadow: 0 10px 16px rgba(255,141,170,.22), 0 0 0 4px rgba(255,255,255,.55);
+    transform: rotate(14deg);
+    z-index: 2;
+  }
+  .party-stat-card-medal span {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    border-radius: 999px;
+    background: rgba(255,255,255,.78);
+    color: #D06082;
+    font-size: 11px;
+    font-weight: 900;
+    line-height: 1;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.75);
+  }
+  .party-stat-card-highlight::after {
+    content: "";
+    position: absolute;
+    inset: auto -18% -28% auto;
+    width: 90px;
+    height: 90px;
+    border-radius: 999px;
+    background: radial-gradient(circle, rgba(255,255,255,.36), rgba(255,255,255,0));
+    pointer-events: none;
+  }
+  .party-stat-card-highlight .party-stat-card-label,
+  .party-stat-card-highlight .party-stat-card-value {
+    color: #9A5367;
+  }
+  .party-stat-card-highlight .party-stat-card-value {
+    font-size: 22px;
+  }
+  .party-stat-card-coin {
+    background:
+      linear-gradient(135deg, rgba(255,246,232,.98), rgba(255,222,232,.92)),
+      radial-gradient(circle at 22% 20%, rgba(255,255,255,.18) 0 7px, transparent 7.5px);
+    border-color: rgba(247,201,72,.2);
+  }
+  .party-stat-card-coin .party-stat-card-value {
+    color: #C16A84;
+  }
+  .party-stat-card-layer {
+    background:
+      linear-gradient(135deg, rgba(248,243,255,.98), rgba(235,228,255,.94)),
+      radial-gradient(circle at 78% 22%, rgba(255,255,255,.18) 0 7px, transparent 7.5px);
+    border-color: rgba(199,176,255,.24);
+  }
+  .party-stat-card-layer .party-stat-card-value {
+    color: #8B70C7;
+    font-size: 22px;
+  }
+  .party-stat-card-dot-highlight {
+    background: #FF8DAA;
+  }
+  .party-stat-card-dot-coin {
+    background: #FF97B3;
+  }
+  .party-stat-card-dot-layer {
+    background: #C4A9FF;
+  }
 
   /* ===== 入场特效展演区 ===== */
   .fx-stage-wrap {
@@ -1825,11 +2145,27 @@
     height: 3.5rem;
   }
 
+  .diary-sticker-art-box {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    flex: 0 0 auto;
+  }
+
   .diary-sticker-art img {
     width: 2.5rem;
     height: 2.5rem;
     object-fit: contain;
     pointer-events: none;
+  }
+
+  .diary-sticker-art .shape-deco,
+  .diary-sticker-art .shape-finish {
+    -webkit-mask-size: contain;
+            mask-size: contain;
   }
 
   /* ========== 日记纸下方的操作条 ========== */
