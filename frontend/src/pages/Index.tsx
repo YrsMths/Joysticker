@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { BookOpen, Box, CloudRain, Coins, Eraser, Gift, Layers, Lock, PackageOpen, PartyPopper, PenLine, RefreshCw, RotateCw, ShoppingBag, Sparkles, Star, Sun, Trash2, Trophy, Trees, Type, UtensilsCrossed, X, Zap } from 'lucide-react';
+import { BookOpen, Box, CloudRain, Coins, Eraser, Gift, Layers, Lock, Mail, PackageOpen, PartyPopper, PenLine, RefreshCw, RotateCw, ShoppingBag, Sparkles, Star, Sun, Trash2, Trophy, Trees, Type, UtensilsCrossed, X, Zap } from 'lucide-react';
 import {
   CODEX_MATERIALS, CODEX_FINISHES, ALL_STICKER_IDS,
   encodeUnlockKey, isUnlocked, countStickerUnlocks, rollDrop,
@@ -17,7 +17,7 @@ import StickerLightbox from '@/game/components/StickerLightbox';
 import AccountBadge from '@/game/components/AccountBadge';
 import { initAccounts, getItem as acctGetItem, setItem as acctSetItem, type Account } from '@/game/state/account';
 
-type Mode='home'|'storyMenu'|'story'|'party'|'diary'|'shop';
+type Mode='home'|'storyMenu'|'story'|'party'|'diary'|'shop'|'mail'|'events';
 type Terrain='normal'|'masked'|'crate'|'stain'|'fog'|'reward';
 const ROWS=8,COLS=6,KEY='happy-sticker-book-v7';
 
@@ -69,6 +69,32 @@ const SCENE_FRAMES: Record<PartySceneKey,string[]> = {
   游乐场: Array.from({length:25},(_,i)=>withBase(`assets/images/scene/playground/${i}.png`)),
   美食街: Array.from({length:30},(_,i)=>withBase(`assets/images/scene/foodstreet/${i}.png`)),
 };
+const HOME_EVENT_BANNERS = [
+  {
+    id:'event-summer-party',
+    title:'夏日贴贴派对即将开始',
+    subtitle:'限定活动展示页占位，可在这里接后续活动内容',
+    image: withBase('assets/images/market/tietiepaidui.png'),
+  },
+  {
+    id:'event-story-diary',
+    title:'剧情手账新章节预告',
+    subtitle:'后续可替换为新章节活动图、联动图或版本宣传图',
+    image: withBase('assets/images/market/xinzhangjie.png'),
+  },
+  {
+    id:'event-sticker-festival-1',
+    title:'JoySticker × 数位笔小哞联动决定',
+    subtitle:'联动活动展示图，已接入可配置活动素材位',
+    image: withBase('assets/images/market/shuweibixiaomou.png'),
+  },
+  {
+    id:'event-sticker-festival-2',
+    title:'JoySticker × 大鼻子胡胡联动决定',
+    subtitle:'联动活动展示图，已接入可配置活动素材位',
+    image: withBase('assets/images/market/dabizihuhu.png'),
+  },
+] as const;
 const PARTY_WEATHER_LABELS: Record<PartyWeatherKey,string> = {
   晴朗: '折射',
   雨: '湿润 / 亲水',
@@ -630,6 +656,7 @@ function ScoreTile({label,value,variant}:{label:string;value:number;variant?:'to
 function ProgressBar({order}:{order:any}){const pct=Math.min(100,Math.round(order.progress/order.target*100));return <div className="rounded-2xl bg-white/70 p-3 shadow-inner"><div className="mb-2 flex justify-between text-xs font-black"><span>{order.label}</span><span>{Math.min(order.progress,order.target)} / {order.target}</span></div><div className="h-3 overflow-hidden rounded-full bg-[#F4E1C8]"><div className="h-full rounded-full bg-gradient-to-r from-[#9EE6C9] to-[#F7C948]" style={{width:`${pct}%`}} /></div></div>;}
 
 function Home({progress,onEnter,account,onAccountChange}:any){
+  const [activeBannerIndex,setActiveBannerIndex] = useState(0);
   const cards=[
     ['story', BookOpen, '剧情手账',
       '从清晨窗台贴到烟花广场，跟着剧情解锁 16 关手账日常，一关一个小温暖。',
@@ -642,6 +669,14 @@ function Home({progress,onEnter,account,onAccountChange}:any){
       '#A7D8FF'],
   ];
   const totalStars = Object.values(progress.storyStars || {}).reduce((sum:number,value:any)=>sum + Number(value || 0), 0);
+  const activeBanner = HOME_EVENT_BANNERS[activeBannerIndex] || HOME_EVENT_BANNERS[0];
+  useEffect(()=>{
+    if(HOME_EVENT_BANNERS.length<=1) return;
+    const timer = window.setInterval(()=>{
+      setActiveBannerIndex((current)=>(current + 1) % HOME_EVENT_BANNERS.length);
+    }, 3200);
+    return ()=>window.clearInterval(timer);
+  },[]);
   return <section className="relative flex flex-1 flex-col justify-center py-8">
     <div className="absolute right-0 top-0 flex items-center gap-3">
       <div className="rounded-full bg-white/80 px-4 py-2 text-sm font-black shadow">⭐ 星星 {progress.starBalance || 0}</div>
@@ -667,6 +702,32 @@ function Home({progress,onEnter,account,onAccountChange}:any){
       </div>
       <p className="mx-auto mt-4 max-w-2xl text-lg font-bold text-[#7A6958]">贴一张、嵌一格，凑出你的小确幸 ── 18 张贴纸 · 7 种材质 · 5 种外观，三乘区爆分一气呵成。</p>
     </div>
+    <button type="button" onClick={()=>onEnter('events')} className="home-event-banner mb-7 text-left">
+      <div className="home-event-banner-slider" aria-hidden="true">
+        <div className="home-event-banner-slides" style={{transform:`translateX(-${activeBannerIndex * 100}%)`}}>
+          {HOME_EVENT_BANNERS.map(item=><div key={item.id} className="home-event-banner-slide">
+            <img src={item.image} alt={item.title} className="home-event-banner-image" draggable={false}/>
+          </div>)}
+        </div>
+      </div>
+      <div className="home-event-banner-chips" aria-hidden="true">
+        {HOME_EVENT_BANNERS.map((item,index)=><span key={item.id} className={`home-event-chip${index===activeBannerIndex ? ' is-active' : ''}`}>
+          <span className="home-event-chip-dot"/>
+          <span>{item.title}</span>
+        </span>)}
+      </div>
+      <div className="home-event-banner-inner">
+        <div>
+          <p className="home-event-banner-label">活动速递</p>
+          <h2 className="home-event-banner-title">{activeBanner?.title || '点击查看当前活动列表'}</h2>
+          <p className="home-event-banner-subtitle">{activeBanner?.subtitle || '展示位与主界面风格适配，后续可直接替换活动素材图片与文案。'}</p>
+          <div className="home-event-banner-dots" aria-hidden="true">
+            {HOME_EVENT_BANNERS.map((item,index)=><span key={item.id} className={`home-event-banner-dot${index===activeBannerIndex ? ' is-active' : ''}`}/>) }
+          </div>
+        </div>
+        <span className="home-event-banner-link">进入活动页 →</span>
+      </div>
+    </button>
     <div className="grid gap-5 md:grid-cols-3">
       {cards.map(([m,I,t,txt,color]:any)=>(
         <button key={m} onClick={()=>onEnter(m)} className="book-card text-left" style={{'--book-color':color} as any}>
@@ -685,6 +746,70 @@ function Home({progress,onEnter,account,onAccountChange}:any){
       <Pill label="商店持有" value={(progress.shopPurchases || []).length}/>
     </div>
   </section>;
+}
+
+function PlaceholderComingSoonPage({title,subtitle,onBack,icon}:{title:string;subtitle:string;onBack:()=>void;icon:React.ReactNode}){
+  return <section className="flex flex-1 flex-col py-6">
+    <div className="mx-auto w-full max-w-5xl px-2">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+        <button onClick={onBack} className="rounded-full bg-white/90 px-4 py-2 text-sm font-black shadow-sm hover:bg-white border border-[#E8E1D6]">← 返回主菜单</button>
+        <div className="text-center">
+          <h2 className="text-3xl font-black text-[#594A3C] md:text-4xl">{title}</h2>
+          <p className="mt-1 text-sm font-bold text-[#9B7D62]">{subtitle}</p>
+        </div>
+        <div className="rounded-full bg-[#FFF7E8] px-4 py-2 text-sm font-black text-[#9B7D62]">占位页面</div>
+      </div>
+      <div className="coming-soon-panel">
+        <div className="coming-soon-icon">{icon}</div>
+        <div className="coming-soon-watermark">敬请期待</div>
+      </div>
+    </div>
+  </section>;
+}
+
+function EventsModal({onClose}:{onClose:()=>void}){
+  const [selectedId,setSelectedId] = useState(HOME_EVENT_BANNERS[0]?.id || '');
+  const selected = HOME_EVENT_BANNERS.find(item=>item.id===selectedId) || HOME_EVENT_BANNERS[0];
+  return <div className="event-modal-overlay" onClick={onClose}>
+    <div className="event-modal" onClick={(e)=>e.stopPropagation()}>
+      <div className="event-modal-head">
+        <div>
+          <h2 className="text-3xl font-black text-[#594A3C] md:text-4xl">活动列表</h2>
+          <p className="mt-1 text-sm font-bold text-[#9B7D62]">左侧查看活动标题，右侧展示当前选中的宣传图素材。</p>
+        </div>
+        <button onClick={onClose} className="event-modal-close" aria-label="关闭活动列表"><X className="h-5 w-5"/></button>
+      </div>
+      <div className="event-modal-body">
+        <aside className="event-modal-sidebar">
+          <div className="event-modal-sidebar-title">活动目录</div>
+          <div className="event-modal-list">
+            {HOME_EVENT_BANNERS.map(item=><button
+              key={item.id}
+              type="button"
+              onClick={()=>setSelectedId(item.id)}
+              className={`event-modal-item ${selected?.id===item.id ? 'is-active' : ''}`}
+            >
+              <span className="event-modal-item-dot"/>
+              <span className="event-modal-item-copy">
+                <strong>{item.title}</strong>
+                <span>{item.subtitle}</span>
+              </span>
+            </button>)}
+          </div>
+        </aside>
+        <section className="event-modal-preview">
+          <div className="event-modal-preview-frame">
+            <img src={selected?.image} alt={selected?.title} className="event-modal-preview-image" draggable={false}/>
+          </div>
+          <div className="event-modal-preview-copy">
+            <p className="event-modal-preview-label">当前活动</p>
+            <h3 className="event-modal-preview-title">{selected?.title}</h3>
+            <p className="event-modal-preview-subtitle">{selected?.subtitle}</p>
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>;
 }
 
 // 章节元信息（用于剧情目录分组展示）— 配色取自游戏主调色板：奶油黄/粉橘/薄荷/天蓝/暖金
@@ -822,6 +947,9 @@ function ShopPage({progress,onBack,onBuy}:{progress:any;onBack:()=>void;onBuy:(i
           <p className="mt-1 text-sm font-bold text-[#9B7D62]">通过剧情手账通关评星收集星星，在这里兑换关外内容。</p>
         </div>
         <Pill label="当前星星" value={starBalance}/>
+      </div>
+      <div className="shop-coming-soon-wrap">
+        <div className="shop-coming-soon-watermark">敬请期待</div>
       </div>
       <div className="grid gap-4 md:grid-cols-3">
         {SHOP_ITEMS.map(item=>{
@@ -2395,14 +2523,17 @@ function HappyStickerBookGameInner({account,onAccountChange}:{account:Account;on
         </div>
         <div className="hidden text-sm font-bold sm:block">7 材质 · 5 外观 · 15 拓扑 · 三乘区结算</div>
         <div className="flex items-center gap-3">
-          <button className="relative rounded-2xl bg-[#F7C948] p-3 text-[#594A3C] shadow-md"><PackageOpen className="h-6 w-6"/><span className="absolute -right-1 -top-1 rounded-full bg-[#FF7E93] px-1.5 text-xs text-white">3</span></button>
+          <button onClick={()=>{ playUiClick(); setMode('mail'); }} className="relative rounded-2xl bg-[#F7C948] p-3 text-[#594A3C] shadow-md"><PackageOpen className="h-6 w-6"/><span className="absolute -right-1 -top-1 rounded-full bg-[#FF7E93] px-1.5 text-xs text-white">3</span></button>
         </div>
       </header>
 
       {mode==='home' && <Home progress={progress} onEnter={enter} account={account} onAccountChange={onAccountChange}/>}
       {mode==='storyMenu' && <StoryLevelSelect levels={L} progress={progress} onSelect={enterStoryLevel} onBack={()=>setMode('home')}/>}
       {mode==='shop' && <ShopPage progress={progress} onBack={()=>setMode('home')} onBuy={buyShopItem}/>}
+      {mode==='mail' && <PlaceholderComingSoonPage title="邮箱 / 包裹" subtitle="主界面的邮箱内容页占位，后续可接公告、礼包、邮件奖励等内容。" onBack={()=>setMode('home')} icon={<Mail className="h-14 w-14"/>}/>} 
+      {mode==='events' && <Home progress={progress} onEnter={enter} account={account} onAccountChange={onAccountChange}/>}
       {mode==='diary' && <Diary unlocks={unlocks} onBack={()=>setMode('home')} onPublish={()=>setProgress((cur:any)=>({...cur,diaryPages:cur.diaryPages+1}))}/>}
+      {mode==='events' && <EventsModal onClose={()=>setMode('home')}/>}
 
       {(mode==='story'||mode==='party') && <section className="grid flex-1 gap-4 py-4 lg:grid-cols-[1fr_540px]">
         <div className="min-w-0 rounded-[2.5rem] border-4 border-white bg-[#FFFDF7]/90 p-4 shadow-2xl">
