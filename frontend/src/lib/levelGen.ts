@@ -140,7 +140,7 @@ export function generatePartyLevel(layer: number): PartyLevel {
   const specialW = Math.min(45, 10 + layer * 3);
   const mats: Record<string,number> = { 普通: 100 - specialW };
   const matsExtras: ['镭射'|'布料'|'磨砂'|'水晶贴'|'泡泡贴'|'烫金', number][] = [
-    ['镭射', 0.2],['水晶贴',0.2],['烫金',0.2],['布料',0.15],['磨砂',0.15],['泡泡贴',0.1],
+    ['镭射', 0.2],['水晶贴',0.2],['烫金',0.2],['布料',0.15],['磨砂',0.15],['泡泡贴',0.2],
   ];
   matsExtras.forEach(([k,w])=>{ mats[k] = Math.max(1, Math.round(specialW * w)); });
 

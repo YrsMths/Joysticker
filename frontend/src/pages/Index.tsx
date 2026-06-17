@@ -108,7 +108,7 @@ const PARTY_SCENE_LABELS: Record<PartySceneKey,string> = {
 const PARTY_WEATHER_DESCRIPTIONS: Record<PartyWeatherKey,(level:PartyModifierLevel)=>string> = {
   晴朗: (level)=>`晴朗 Lv.${level}：水晶贴贴入时，重触发${level===1?'随机 1 个':level===2?'随机 3 个':'全部'}其他水晶贴得分`,
   雨: (level)=>`雨 Lv.${level}：纸箱效果失效；泡泡贴贴入时总得分膨胀 ×${level===1?1.5:level===2?2:3}`,
-  雷: (level)=>`雷 Lv.${level}：镭射贴贴入时，外圈 ${level} 层格子各有 30% 概率触发一次得分`,
+  雷: (level)=>`雷 Lv.${level}：镭射贴贴入时，外圈${level<3?'1层格子各有 10%/15%':'2层格子各有 15%'}概率触发得分`,
 };
 const PARTY_SCENE_DESCRIPTIONS: Record<PartySceneKey,(level:PartyModifierLevel)=>string> = {
   动物园: (level)=>`动物园 Lv.${level}：动物贴纸贴入时，基础得分额外 +${level===1?1:level===2?3:5}`,
@@ -155,6 +155,7 @@ type BoardScorePopup = {
   dx:number;
   dy:number;
   delay:number;
+  effect?:'lightning'|'prism'|'bubble'|'ribbon'|'bite'|'animal';
 };
 type PartyWeatherKey = '晴朗'|'雨'|'雷';
 type PartySceneKey = '动物园'|'游乐场'|'美食街';
@@ -1752,13 +1753,27 @@ function HappyStickerBookGameInner({account,onAccountChange}:{account:Account;on
       if(e.button === 1) e.preventDefault();
     };
 
+    const onContextMenu = (e: MouseEvent) => {
+      const st = wheelStateRef.current;
+      if(st.mode!=='story' && st.mode!=='party') return;
+      if(st.candidatesLen<=0) return;
+      e.preventDefault();
+      const len = st.candidatesLen;
+      const next = ((st.selectedIndex + 1) % len + len) % len;
+      // 切换后将新选中贴纸 rotation 重置为 0
+      setCandidates(cur=>cur.map((x,i)=> (i===next && x.kind==='sticker') ? { ...x, rotation: 0 } : x));
+      setSelectedIndex(next);
+    };
+
     el.addEventListener('wheel', onWheel, { passive: false });
     el.addEventListener('mousedown', onMouseDown);
     el.addEventListener('auxclick', onAuxClick);
+    el.addEventListener('contextmenu', onContextMenu);
     return ()=>{
       el.removeEventListener('wheel', onWheel);
       el.removeEventListener('mousedown', onMouseDown);
       el.removeEventListener('auxclick', onAuxClick);
+      el.removeEventListener('contextmenu', onContextMenu);
     };
   },[mode, candidates]);
 
@@ -2105,7 +2120,7 @@ function HappyStickerBookGameInner({account,onAccountChange}:{account:Account;on
     setFloatLogs(cur=>[...cur,{id,txt,kind}]);
     setTimeout(()=>setFloatLogs(cur=>cur.filter(f=>f.id!==id)),2200);
   };
-  const pushBoardScorePopups = (cells:[number,number][], totalValue:number, kind:'base'|'pattern'|'special', label?:string, stackIndex = 0)=>{
+  const pushBoardScorePopups = (cells:[number,number][], totalValue:number, kind:'base'|'pattern'|'special', label?:string, stackIndex = 0, effect?:'lightning'|'prism'|'bubble'|'ribbon'|'bite'|'animal')=>{
     if(totalValue<=0 || cells.length===0) return;
     const base = Math.floor(totalValue / cells.length);
     const rem = totalValue % cells.length;
@@ -2120,6 +2135,7 @@ function HappyStickerBookGameInner({account,onAccountChange}:{account:Account;on
       dx: ((index % 2 === 0 ? -1 : 1) * (6 + (index % 3) * 3)) + ((row + col) % 3 - 1) * 2,
       dy: -10 - stackIndex * 22 - (index % 3) * 6,
       delay: stackIndex * 90 + index * 35,
+      effect,
     })).filter(item=>item.value>0);
     if(popups.length===0) return;
     setBoardScorePopups(cur=>[...cur,...popups]);
@@ -2226,7 +2242,7 @@ function HappyStickerBookGameInner({account,onAccountChange}:{account:Account;on
     const n = board.map(line=>line.map(cell=>({...cell})));
     let bg = 0, hi = 0, stack = false, fogReveal = 0, stableHits = 0, stainAdj = 0;
     const detailLines:string[] = [];
-    const specialPopupEntries:{ value:number; label:string }[] = [];
+    const specialPopupEntries:{ value:number; label:string; effect?:'lightning'|'prism'|'bubble'|'ribbon'|'bite'|'animal'; cells?:[number,number][] }[] = [];
 
     // 邻位污渍计数
     const dirs = [[1,0],[-1,0],[0,1],[0,-1]];
@@ -2258,10 +2274,13 @@ function HappyStickerBookGameInner({account,onAccountChange}:{account:Account;on
       const sceneMatch = (partyScene.key==='游乐场' && x.type==='节日')
         || (partyScene.key==='美食街' && x.type==='食物')
         || (partyScene.key==='动物园' && x.type==='动物');
+      const sceneEffect = partyScene.key==='游乐场' ? 'ribbon' 
+        : partyScene.key==='美食街' ? 'bite' 
+        : 'animal';
       if(sceneMatch){
         bg += sceneBonus;
         detailLines.push(`${partyScene.key}基础加成 +${sceneBonus}`);
-        specialPopupEntries.push({ value:sceneBonus, label:partyScene.key });
+        specialPopupEntries.push({ value:sceneBonus, label:partyScene.key, effect:sceneEffect });
       }
     }
 
@@ -2361,39 +2380,58 @@ function HappyStickerBookGameInner({account,onAccountChange}:{account:Account;on
     }
 
     const weatherDetails:string[] = [];
-    const weatherPopupEntries:{ value:number; label:string }[] = [];
+    const weatherPopupEntries:{ value:number; label:string; effect?:'lightning'|'prism'|'bubble'|'ribbon'|'bite'|'animal'; cells?:[number,number][] }[] = [];
 
     if(mode==='party' && partyWeather.key==='晴朗' && activeSticker.material==='水晶贴'){
       const crystalTargets = placedAfter.filter(item=>item.instanceId!==activeSticker.instanceId && item.material==='水晶贴');
       let reboundTargets = crystalTargets;
       if(partyWeather.level===1) reboundTargets = crystalTargets.slice(0,1);
       if(partyWeather.level===2) reboundTargets = crystalTargets.slice(0,3);
-      const reboundScore = reboundTargets.reduce((sum,item)=>sum + item.cells.reduce((cellSum:number,[dr,dc]:number[])=>cellSum + Math.max(0, n[item.row+dr]?.[item.col+dc]?.base || 0),0), 0);
+      const reboundCells:[number,number][] = [];
+      let reboundScore = 0;
+      reboundTargets.forEach(item=>{
+        item.cells.forEach(([dr,dc]:number[])=>{
+          const r = item.row + dr;
+          const c = item.col + dc;
+          const base = Math.max(0, n[r]?.[c]?.base || 0);
+          if(base > 0){
+            reboundScore += base;
+            reboundCells.push([r, c]);
+          }
+        });
+      });
       if(reboundScore>0){
         sg += reboundScore;
         weatherDetails.push(`晴朗折射 +${reboundScore}（重触发 ${reboundTargets.length} 个水晶贴）`);
-        weatherPopupEntries.push({ value:reboundScore, label:'折射' });
+        weatherPopupEntries.push({ value:reboundScore, label:'折射', effect:'prism', cells:reboundCells });
       }
     }
 
     if(mode==='party' && partyWeather.key==='雷' && activeSticker.material==='镭射'){
-      const radius = partyWeather.level;
+      const radius = partyWeather.level < 3 ? 1 : 2;
+      const probability = partyWeather.level < 3 ? 10 + (partyWeather.level - 1) * 5 : 15;
       let chainScore = 0;
+      const chainCells:[number,number][] = [];
       for(let rr=Math.max(0, activeRow-radius); rr<=Math.min(ROWS-1, activeRow+radius+activeCells.length); rr++){
         for(let cc=Math.max(0, activeCol-radius); cc<=Math.min(COLS-1, activeCol+radius+activeCells.length); cc++){
           const inOwn = activeCells.some(([dr,dc])=>activeRow+dr===rr && activeCol+dc===cc);
           if(inOwn) continue;
           if(Math.abs((rr-activeRow))>radius && Math.abs((cc-activeCol))>radius) continue;
           const rollSeed = Math.abs((turn+1)*97 + rr*31 + cc*17 + partyLayer*13) % 100;
-          if(rollSeed < 30){
-            chainScore += Math.max(0, n[rr]?.[cc]?.base || 0);
+          if(rollSeed < probability){
+            const cellBase = Math.max(0, n[rr]?.[cc]?.base || 0);
+            chainScore += cellBase;
+            if(cellBase > 0){
+              chainCells.push([rr, cc]);
+            }
           }
         }
       }
       if(chainScore>0){
         sg += chainScore;
-        weatherDetails.push(`雷鸣连携 +${chainScore}（外圈 ${partyWeather.level} 层触发）`);
-        weatherPopupEntries.push({ value:chainScore, label:'连携' });
+        const layerText = partyWeather.level < 3 ? '1层' : '2层';
+        weatherDetails.push(`雷鸣连携 +${chainScore}（外圈${layerText} ${probability}%触发）`);
+        weatherPopupEntries.push({ value:chainScore, label:'连携', effect:'lightning', cells:chainCells });
       }
     }
 
@@ -2408,7 +2446,7 @@ function HappyStickerBookGameInner({account,onAccountChange}:{account:Account;on
       const boostedTotal = boostedBase + boostedPattern + boostedSpecial;
       if(boostedTotal>0){
         weatherDetails.push(`雨幕亲水 +${boostedTotal}（×${rainMultiplier}）`);
-        weatherPopupEntries.push({ value:boostedTotal, label:'亲水' });
+        weatherPopupEntries.push({ value:boostedTotal, label:'亲水', effect:'bubble' });
       }
     }
 
@@ -2444,7 +2482,7 @@ function HappyStickerBookGameInner({account,onAccountChange}:{account:Account;on
     let popupStackIndex = 0;
     if(bg>0) pushBoardScorePopups(popupCells, bg, 'base', '基础', popupStackIndex++);
     if(pg>0) pushBoardScorePopups(popupCells, pg, 'pattern', '构型', popupStackIndex++);
-    specialPopupEntries.forEach(entry=>pushBoardScorePopups(popupCells, entry.value, 'special', entry.label, popupStackIndex++));
+    specialPopupEntries.forEach(entry=>pushBoardScorePopups(entry.cells || popupCells, entry.value, 'special', entry.label, popupStackIndex++, entry.effect));
     if(upgrade) pushFloat(`${activeSticker.name} 升级！`, 'special');
     extraUpgraded.forEach((item:any)=>pushFloat(`${item.name} 共鸣升级！`, 'special'));
     detailLines.forEach(d=> pushFloat(d, 'special'));
@@ -2661,7 +2699,7 @@ function HappyStickerBookGameInner({account,onAccountChange}:{account:Account;on
                   绝对定位贴在 game-board 之上；不参与 game-board 自身的网格排布，因此格子不会被挤走或替换。
                   pointer-events:none 让格子继续接收点击 / 拖拽事件。 */}
               <div className="game-board-overlay" aria-hidden="true">
-                {boardScorePopups.map(popup=><span key={popup.id} className={`board-score-popup board-score-popup-${popup.kind}`} style={{
+                {boardScorePopups.map(popup=><span key={popup.id} className={`board-score-popup board-score-popup-${popup.kind}${popup.effect ? ` board-score-popup-${popup.effect}` : ''}`} style={{
                   gridColumn: `${popup.col+1}`,
                   gridRow: `${popup.row+1}`,
                   zIndex: `${10 + popup.stackIndex}`,
