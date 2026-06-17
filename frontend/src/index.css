@@ -312,6 +312,33 @@
   color: #C36B1F;
   background: linear-gradient(135deg, #FFF0D7, #FFD09B);
 }
+.party-effect-panel {
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.72), 0 10px 18px rgba(89,74,60,.06);
+}
+.party-effect-panel strong {
+  color: #594A3C;
+}
+.party-effect-panel span {
+  color: #7A6958;
+}
+.party-effect-panel-weather-sun {
+  background: linear-gradient(135deg, #FFF7C9, #FFD88C);
+}
+.party-effect-panel-weather-rain {
+  background: linear-gradient(135deg, #E8F3FF, #BCD8FF);
+}
+.party-effect-panel-weather-thunder {
+  background: linear-gradient(135deg, #F0E8FF, #D8C5FF);
+}
+.party-effect-panel-scene-zoo {
+  background: linear-gradient(135deg, #E7F8D9, #C7E89C);
+}
+.party-effect-panel-scene-playground {
+  background: linear-gradient(135deg, #FFE7F0, #FFC5D4);
+}
+.party-effect-panel-scene-food {
+  background: linear-gradient(135deg, #FFF0D7, #FFD09B);
+}
 
 @layer base {
   :root {
@@ -1298,12 +1325,32 @@
     transform: translateY(-4px) scale(1.02);
   }
 
+.candidate-card.party-bonus-candidate {
+  animation: candidate-party-bonus-jitter 1.35s ease-in-out infinite;
+  transform-origin: center bottom;
+}
+
+.candidate-card.party-bonus-candidate .candidate-art.shape-preview {
+  filter:
+    drop-shadow(0 0 10px rgba(247, 201, 72, .42))
+    drop-shadow(0 0 18px rgba(255, 126, 147, .2))
+    drop-shadow(0 4px 8px rgba(89, 74, 60, .25));
+}
+
   .candidate-card.kind-sticker:hover .candidate-art.shape-preview,
   .candidate-card.kind-sticker.selected .candidate-art.shape-preview {
     filter:
       drop-shadow(0 0 8px rgba(255, 126, 147, .6))
       drop-shadow(0 4px 8px rgba(89, 74, 60, .25));
   }
+
+.candidate-card.kind-sticker.party-bonus-candidate:hover .candidate-art.shape-preview,
+.candidate-card.kind-sticker.party-bonus-candidate.selected .candidate-art.shape-preview {
+  filter:
+    drop-shadow(0 0 12px rgba(247, 201, 72, .6))
+    drop-shadow(0 0 18px rgba(255, 126, 147, .32))
+    drop-shadow(0 4px 8px rgba(89, 74, 60, .25));
+}
 
   .candidate-card.kind-tool:hover .candidate-art span,
   .candidate-card.kind-tool.selected .candidate-art span {
@@ -1513,6 +1560,81 @@
   .candidate-tag-finish.tag-fin-confetti { background: linear-gradient(110deg, #ffc7d2, #ffe68f, #caf8d9, #cde5ff, #ecd2ff); color: #5a3a4a; }
   .candidate-tag-finish.tag-fin-dynamic { background: #BFE3FF; color: #1F4A6E; }
   .candidate-tag-finish.tag-fin-glow { background: #CCFFE0; color: #1C5A3A; box-shadow: 0 0 8px rgba(120, 255, 180, .4); }
+
+  .party-bonus-tag {
+    position: relative;
+    isolation: isolate;
+    animation: candidate-party-bonus-tag-aura 1.9s ease-in-out infinite;
+  }
+
+  .party-bonus-tag::before {
+    content: '';
+    position: absolute;
+    inset: -8px;
+    z-index: -1;
+    border-radius: 999px;
+    opacity: .72;
+    filter: blur(10px);
+    animation: candidate-party-bonus-tag-glow 1.9s ease-in-out infinite;
+    pointer-events: none;
+  }
+
+  .party-bonus-tag-weather {
+    box-shadow: inherit;
+  }
+
+  .party-bonus-tag-weather::before {
+    background: radial-gradient(circle, rgba(120,214,255,.88) 0%, rgba(184,116,255,.62) 50%, rgba(184,116,255,0) 80%);
+  }
+
+  .party-bonus-tag-scene {
+    box-shadow: inherit;
+  }
+
+  .party-bonus-tag-scene::before {
+    background: radial-gradient(circle, rgba(255,183,197,.9) 0%, rgba(247,201,72,.64) 54%, rgba(247,201,72,0) 82%);
+  }
+
+  @keyframes candidate-party-bonus-jitter {
+    0% { transform: translate3d(0, 0, 0) rotate(0deg) scale(1); }
+    14% { transform: translate3d(-1px, 0, 0) rotate(-1deg) scale(1.01); }
+    28% { transform: translate3d(1px, -2px, 0) rotate(1deg) scale(1.02); }
+    42% { transform: translate3d(-2px, 1px, 0) rotate(-1.6deg) scale(1.01); }
+    58% { transform: translate3d(2px, -1px, 0) rotate(1.3deg) scale(1.02); }
+    72% { transform: translate3d(-1px, 1px, 0) rotate(-.8deg) scale(1.01); }
+    86% { transform: translate3d(1px, 0, 0) rotate(.8deg) scale(1.005); }
+    100% { transform: translate3d(0, 0, 0) rotate(0deg) scale(1); }
+  }
+
+  @keyframes candidate-party-bonus-tag-aura {
+    0% {
+      transform: translateY(0) scale(1);
+    }
+    50% {
+      transform: translateY(0) scale(1);
+    }
+    100% {
+      transform: translateY(0) scale(1);
+    }
+  }
+
+  @keyframes candidate-party-bonus-tag-glow {
+    0% {
+      opacity: .32;
+      transform: scale(1);
+      filter: blur(10px) hue-rotate(0deg);
+    }
+    50% {
+      opacity: .96;
+      transform: scale(1.22);
+      filter: blur(16px) hue-rotate(18deg);
+    }
+    100% {
+      opacity: .32;
+      transform: scale(1);
+      filter: blur(10px) hue-rotate(0deg);
+    }
+  }
 
   .tool-button {
     display: flex;

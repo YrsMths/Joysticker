@@ -106,14 +106,14 @@ const PARTY_SCENE_LABELS: Record<PartySceneKey,string> = {
   美食街: '烟火小吃派对',
 };
 const PARTY_WEATHER_DESCRIPTIONS: Record<PartyWeatherKey,(level:PartyModifierLevel)=>string> = {
-  晴朗: (level)=>`晴朗·折射：水晶贴贴入时，重触发${level===1?'随机 1 个':level===2?'随机 3 个':'全部'}其他水晶贴得分`,
-  雨: (level)=>`雨·湿润 / 亲水：纸箱失效；泡泡贴贴入时得分膨胀 ×${level===1?1.5:level===2?2:3}`,
-  雷: (level)=>`雷·连携：镭射贴入时，外圈 ${level} 层格子各有 30% 概率触发得分`,
+  晴朗: (level)=>`晴朗 Lv.${level}：水晶贴贴入时，重触发${level===1?'随机 1 个':level===2?'随机 3 个':'全部'}其他水晶贴得分`,
+  雨: (level)=>`雨 Lv.${level}：纸箱效果失效；泡泡贴贴入时总得分膨胀 ×${level===1?1.5:level===2?2:3}`,
+  雷: (level)=>`雷 Lv.${level}：镭射贴贴入时，外圈 ${level} 层格子各有 30% 概率触发一次得分`,
 };
 const PARTY_SCENE_DESCRIPTIONS: Record<PartySceneKey,(level:PartyModifierLevel)=>string> = {
-  动物园: (level)=>`动物园 Lv.${level}：动物类型贴纸基础加成 +${level===1?1:level===2?3:5}`,
-  游乐场: (level)=>`游乐场 Lv.${level}：节日类型贴纸基础加成 +${level===1?1:level===2?3:5}`,
-  美食街: (level)=>`美食街 Lv.${level}：食物类型贴纸基础加成 +${level===1?1:level===2?3:5}`,
+  动物园: (level)=>`动物园 Lv.${level}：动物贴纸贴入时，基础得分额外 +${level===1?1:level===2?3:5}`,
+  游乐场: (level)=>`游乐场 Lv.${level}：节日贴纸贴入时，基础得分额外 +${level===1?1:level===2?3:5}`,
+  美食街: (level)=>`美食街 Lv.${level}：食物贴纸贴入时，基础得分额外 +${level===1?1:level===2?3:5}`,
 };
 const AUDIO_ASSETS = {
   ui: {
@@ -249,6 +249,44 @@ const VARIANT_UPGRADE_RULES: VariantUpgradeRule[] = [
 
 type MaterialKey = StickerMaterialKey;
 type FinishKey = StickerFinishKey;
+
+function isPartyBonusCandidateSticker(sticker:any, weather:PartyWeatherState, scene:PartySceneState){
+  if(!sticker || sticker.kind!=='sticker') return false;
+  const weatherMatch = (weather.key==='晴朗' && sticker.material==='水晶贴')
+    || (weather.key==='雨' && sticker.material==='泡泡贴')
+    || (weather.key==='雷' && sticker.material==='镭射');
+  const sceneMatch = (scene.key==='动物园' && sticker.type==='动物')
+    || (scene.key==='游乐场' && sticker.type==='节日')
+    || (scene.key==='美食街' && sticker.type==='食物');
+  return weatherMatch || sceneMatch;
+}
+
+function getPartyCandidateBonusTagClass(sticker:any, weather:PartyWeatherState, scene:PartySceneState){
+  if(!sticker || sticker.kind!=='sticker') return { materialClass:'', typeClass:'' };
+  const materialClass = (weather.key==='晴朗' && sticker.material==='水晶贴')
+    || (weather.key==='雨' && sticker.material==='泡泡贴')
+    || (weather.key==='雷' && sticker.material==='镭射')
+    ? 'party-bonus-tag party-bonus-tag-weather'
+    : '';
+  const typeClass = (scene.key==='动物园' && sticker.type==='动物')
+    || (scene.key==='游乐场' && sticker.type==='节日')
+    || (scene.key==='美食街' && sticker.type==='食物')
+    ? 'party-bonus-tag party-bonus-tag-scene'
+    : '';
+  return { materialClass, typeClass };
+}
+
+function getPartyWeatherPanelClass(weatherKey:PartyWeatherKey){
+  if(weatherKey==='晴朗') return 'party-effect-panel-weather-sun';
+  if(weatherKey==='雨') return 'party-effect-panel-weather-rain';
+  return 'party-effect-panel-weather-thunder';
+}
+
+function getPartyScenePanelClass(sceneKey:PartySceneKey){
+  if(sceneKey==='动物园') return 'party-effect-panel-scene-zoo';
+  if(sceneKey==='美食街') return 'party-effect-panel-scene-food';
+  return 'party-effect-panel-scene-playground';
+}
 
 // ===== 工具 =====
 const T:any = {
@@ -1548,6 +1586,7 @@ function HappyStickerBookGameInner({account,onAccountChange}:{account:Account;on
   const weatherBubbleMultiplier = mode==='party' && partyWeather.key==='雨' && selected?.kind==='sticker' && selected.material==='泡泡贴'
     ? ([1, 1.5, 2, 3] as const)[partyWeather.level]
     : 1;
+  const isPartyCandidateHighlighted = (candidate:any)=>mode==='party' && isPartyBonusCandidateSticker(candidate, partyWeather, partyScene);
   const partyWeatherFrames = WEATHER_FRAMES[partyWeather.key];
   const partyWeatherDescription = PARTY_WEATHER_DESCRIPTIONS[partyWeather.key](partyWeather.level);
   const partySceneFrames = SCENE_FRAMES[partyScene.key];
@@ -2744,7 +2783,10 @@ function HappyStickerBookGameInner({account,onAccountChange}:{account:Account;on
           </div>
 
           <div className="grid grid-cols-3 gap-3">
-            {candidates.map((c,i)=><button key={c.instanceId}
+            {candidates.map((c,i)=>{
+              const isBonusCandidate = isPartyCandidateHighlighted(c);
+              const { materialClass, typeClass } = getPartyCandidateBonusTagClass(c, partyWeather, partyScene);
+              return <button key={c.instanceId}
               draggable
               onDragStart={(e)=>{
                 e.dataTransfer.setData('text/plain',String(i));
@@ -2766,7 +2808,7 @@ function HappyStickerBookGameInner({account,onAccountChange}:{account:Account;on
               }}
               onDragEnd={()=>{ setDragIndex(null); setHoverCell(null); }}
               onClick={()=>setSelectedIndex(i)}
-              className={`candidate-card kind-${c.kind} ${selectedIndex===i?'selected':''}`}>
+              className={`candidate-card kind-${c.kind} ${selectedIndex===i?'selected':''} ${isBonusCandidate?'party-bonus-candidate':''}`}>
               <div className="candidate-kind-badge">{c.kind==='sticker'?'贴纸':'道具'}</div>
               {c.kind==='sticker' ? (()=>{
                 const baseRows = Math.max(...c.shape.map(([r]:number[])=>r))+1;
@@ -2791,12 +2833,12 @@ function HappyStickerBookGameInner({account,onAccountChange}:{account:Account;on
                 </div>
                 <p className="mt-1 text-xs font-bold text-[#7A6958]">{c.kind==='sticker'?`形状：${SHAPE_LABEL[c.shapeKey]||''}`:c.note}</p>
                 {c.kind==='sticker' && <div className="mt-2 flex flex-wrap gap-1">
-                  <span className="tag">{c.type}</span>
-                  <span className={`tag candidate-tag-material tag-${MATERIALS[c.material as MaterialKey].visual}`} title={MATERIALS[c.material as MaterialKey].desc}>{c.material}</span>
+                  <span className={`tag ${typeClass}`}>{c.type}</span>
+                  <span className={`tag candidate-tag-material tag-${MATERIALS[c.material as MaterialKey].visual} ${materialClass}`} title={MATERIALS[c.material as MaterialKey].desc}>{c.material}</span>
                   <span className={`tag candidate-tag-finish tag-${FINISHES[c.finish as FinishKey].visual}`} title={FINISHES[c.finish as FinishKey].desc}>{c.finish}</span>
                 </div>}
               </div>
-            </button>)}
+            </button>})}
           </div>
 
           <div className="grid grid-cols-3 gap-2">
@@ -2830,12 +2872,12 @@ function HappyStickerBookGameInner({account,onAccountChange}:{account:Account;on
           <div className="rounded-3xl bg-white p-4 shadow-inner">
             <h4 className="mb-2 flex items-center gap-2 font-black"><Sparkles className="h-5 w-5 text-[#7A8CFF]"/>天气与场景效果</h4>
             <div className="space-y-3 text-sm font-bold text-[#7A6958] leading-6">
-              <div className="rounded-2xl bg-[#FFF7E8] px-4 py-3">
+              <div className={`party-effect-panel rounded-2xl px-4 py-3 ${getPartyScenePanelClass(partyScene.key)}`}>
                 <strong className="block text-[#594A3C]">{partyScene.key} · {PARTY_SCENE_LABELS[partyScene.key]}</strong>
                 <span>{partySceneDescription}</span>
               </div>
-              <div className="rounded-2xl bg-[#FFF7E8] px-4 py-3">
-                <strong className="block text-[#594A3C]">{PARTY_WEATHER_LABELS[partyWeather.key]}</strong>
+              <div className={`party-effect-panel rounded-2xl px-4 py-3 ${getPartyWeatherPanelClass(partyWeather.key)}`}>
+                <strong className="block text-[#594A3C]">{partyWeather.key} · {PARTY_WEATHER_LABELS[partyWeather.key]}</strong>
                 <span>{partyWeatherDescription}</span>
               </div>
             </div>
@@ -2847,7 +2889,10 @@ function HappyStickerBookGameInner({account,onAccountChange}:{account:Account;on
           </div>
 
           <div className="grid grid-cols-3 gap-3">
-            {candidates.map((c,i)=><button key={c.instanceId}
+            {candidates.map((c,i)=>{
+              const isBonusCandidate = isPartyCandidateHighlighted(c);
+              const { materialClass, typeClass } = getPartyCandidateBonusTagClass(c, partyWeather, partyScene);
+              return <button key={c.instanceId}
               draggable
               onDragStart={(e)=>{
                 e.dataTransfer.setData('text/plain',String(i));
@@ -2869,7 +2914,7 @@ function HappyStickerBookGameInner({account,onAccountChange}:{account:Account;on
               }}
               onDragEnd={()=>{ setDragIndex(null); setHoverCell(null); }}
               onClick={()=>setSelectedIndex(i)}
-              className={`candidate-card kind-${c.kind} ${selectedIndex===i?'selected':''}`}>
+              className={`candidate-card kind-${c.kind} ${selectedIndex===i?'selected':''} ${isBonusCandidate?'party-bonus-candidate':''}`}>
               <div className="candidate-kind-badge">{c.kind==='sticker'?'贴纸':'道具'}</div>
               {c.kind==='sticker' ? (()=>{
                 const baseRows = Math.max(...c.shape.map(([r]:number[])=>r))+1;
@@ -2894,12 +2939,12 @@ function HappyStickerBookGameInner({account,onAccountChange}:{account:Account;on
                 </div>
                 <p className="mt-1 text-xs font-bold text-[#7A6958]">{c.kind==='sticker'?`形状：${SHAPE_LABEL[c.shapeKey]||''}`:c.note}</p>
                 {c.kind==='sticker' && <div className="mt-2 flex flex-wrap gap-1">
-                  <span className="tag">{c.type}</span>
-                  <span className={`tag candidate-tag-material tag-${MATERIALS[c.material as MaterialKey].visual}`} title={MATERIALS[c.material as MaterialKey].desc}>{c.material}</span>
+                  <span className={`tag ${typeClass}`}>{c.type}</span>
+                  <span className={`tag candidate-tag-material tag-${MATERIALS[c.material as MaterialKey].visual} ${materialClass}`} title={MATERIALS[c.material as MaterialKey].desc}>{c.material}</span>
                   <span className={`tag candidate-tag-finish tag-${FINISHES[c.finish as FinishKey].visual}`} title={FINISHES[c.finish as FinishKey].desc}>{c.finish}</span>
                 </div>}
               </div>
-            </button>)}
+            </button>})}
           </div>
 
           <div className="grid grid-cols-3 gap-2">
